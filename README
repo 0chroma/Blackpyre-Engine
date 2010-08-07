@@ -1,0 +1,3 @@
+Blackpyre Engine
+
+The Blackpyre engine is a C++ game engine. It was made for 2d vertically scrolling shooting games, but is especially useful for danmaku/bullet hell-style games. Content in the game is written in Javascript, and run in the v8 Javascript engine. Because of this, game content runs quicky and is easy to write/organize.
