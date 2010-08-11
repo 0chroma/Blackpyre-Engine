@@ -5,5 +5,18 @@
  * Source available under the Academic Free License
  * See LICENSE for licensing information
  */
-
  
+#ifndef WindowGLUT_h
+#define WindowGLUT_h
+
+#include "WindowFramework.h"
+
+class WindowGLUT : public WindowFramework{
+    public:
+        WindowGLUT(int argc = 0, char **argv = 0);
+        ~WindowGLUT();
+
+        int create(char title);
+};
+
+#endif // WindowGLUT_h

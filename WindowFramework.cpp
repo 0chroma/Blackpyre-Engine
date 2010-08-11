@@ -8,7 +8,7 @@
 
 #include "WindowFramework.h"
 
-WindowFramework::WindowFramework(int, char **){
+WindowFramework::WindowFramework(int argc, char **argv){
 
 }
 

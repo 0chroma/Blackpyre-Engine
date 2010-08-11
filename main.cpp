@@ -6,4 +6,13 @@
  * See LICENSE for licensing information
  */
 
- 
+
+#include "Global.h" 
+
+
+
+int main(int argc, char **argv){
+	Global *game = new Global();
+	game->init();
+	return 0;
+}
