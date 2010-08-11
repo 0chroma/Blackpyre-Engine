@@ -6,4 +6,19 @@
  * See LICENSE for licensing information
  */
 
- 
+#include "Global.h"
+#include "WindowGLUT.h"
+
+Global::Global(){
+	window = new WindowGLUT();
+}
+
+Global::~Global(){
+
+}
+
+int Global::init(int argc, char **argv){
+	char title="foo";
+	window->create(title);
+	return 0;
+}
