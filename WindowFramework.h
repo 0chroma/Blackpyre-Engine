@@ -14,7 +14,7 @@ class WindowFramework {
         WindowFramework(int argc = 0, char **argv = 0);
         virtual ~WindowFramework();
 
-        virtual int create(char title);
+        virtual int create(char* title);
 };
 
 #endif // WindowFramework_h

@@ -16,7 +16,7 @@ class WindowGLUT : public WindowFramework{
         WindowGLUT(int argc = 0, char **argv = 0);
         ~WindowGLUT();
 
-        int create(char title);
+        int create(char* title);
 };
 
 #endif // WindowGLUT_h

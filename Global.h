@@ -9,16 +9,22 @@
 #ifndef Global_h
 #define Global_h
 
-#include "WindowGLUT.h"
+
+class WindowFramework;
 
 class Global {
     public:
-	Global();
 	~Global();
 
-        static int init(int argc = 0, char **argv = 0);
-	static WindowFramework *window;
+        int init(int argc = 0, char **argv = 0);
+	static Global *getInstance();
 	
+	static WindowFramework *window;
+
+    private:
+        static Global *instance;
+	
+	Global();
 };
 
 #endif // Global_h
