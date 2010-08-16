@@ -12,7 +12,7 @@
 
 
 int main(int argc, char **argv){
-	Global *game = new Global();
+	Global *game = Global::getInstance();
 	game->init();
 	return 0;
 }

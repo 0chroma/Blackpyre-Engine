@@ -15,3 +15,7 @@ WindowFramework::WindowFramework(int argc, char **argv){
 WindowFramework::~WindowFramework(){
 
 }
+
+int WindowFramework::create(char* title){
+	return 0;
+}

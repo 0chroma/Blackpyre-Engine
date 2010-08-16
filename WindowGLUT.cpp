@@ -7,10 +7,12 @@
  */
 
 #include <stdio.h>
+#include <iostream>
 
 #include "WindowGLUT.h"
+#include "WindowFramework.h"
 
-WindowGLUT::WindowGLUT(int argc, char **argv){
+WindowGLUT::WindowGLUT(int argc, char **argv) : WindowFramework(argc, argv){
 	
 }
 
@@ -18,8 +20,8 @@ WindowGLUT::~WindowGLUT(){
 
 }
 
-int WindowGLUT::create(const char title){
-	fprintf(stdout, title);
-	fprintf(stdout, "\n");
+int WindowGLUT::create(char* title){
+	//fprintf(stdout, "%s\n", title);
+	std::cout << title;
 	return 0;
 }
