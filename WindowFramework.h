@@ -18,6 +18,7 @@ class WindowFramework {
 
         static void handleKeypress(unsigned char key, int x, int y);
         virtual void swapBuffers();
+	virtual void postRedisplay();
 };
 
 #endif // WindowFramework_h

@@ -26,4 +26,8 @@ void WindowFramework::handleKeypress(unsigned char key, int x, int y){
 
 void WindowFramework::swapBuffers(){
 
-};
+}
+
+void WindowFramework::postRedisplay(){
+
+}
