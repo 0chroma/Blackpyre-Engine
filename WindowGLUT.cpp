@@ -52,3 +52,7 @@ void WindowGLUT::handleKeypress(unsigned char key, int x, int y){
 void WindowGLUT::swapBuffers(){
     glutSwapBuffers();
 }
+
+void WindowGLUT::postRedisplay(){
+	glutPostRedisplay();
+}
