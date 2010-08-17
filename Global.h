@@ -11,15 +11,17 @@
 
 
 class WindowFramework;
+class GlUtil;
 
 class Global {
     public:
 	~Global();
 
         int init(int argc = 0, char **argv = 0);
-	static Global *getInstance();
+	    static Global *getInstance();
 	
-	static WindowFramework *window;
+    	static WindowFramework  *window;
+        static GlUtil           *glUtil;
 
     private:
         static Global *instance;

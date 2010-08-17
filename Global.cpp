@@ -8,13 +8,16 @@
 
 #include "Global.h"
 #include "WindowGLUT.h"
+#include "GlUtil.h"
 
 Global *Global::instance = 0;
+GlUtil *Global::glUtil = 0;
 
 WindowFramework *Global::window = 0;
 
 Global::Global(){
 	window = new WindowGLUT();
+    glUtil = new GlUtil();
 }
 
 Global::~Global(){
@@ -29,7 +32,7 @@ Global *Global::getInstance(){
 }
 
 int Global::init(int argc, char **argv){
-	char title[] = "bar";
+	char title[] = "Blackpyre";
 	window->create(title);
 	return 0;
 }
