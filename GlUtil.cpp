@@ -11,7 +11,6 @@
 #include "WindowFramework.h"
 
 #include <GL/gl.h>
-#include <GL/glu.h>
 
 GlUtil::GlUtil(){
 
