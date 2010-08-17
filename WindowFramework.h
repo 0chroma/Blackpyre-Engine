@@ -15,6 +15,9 @@ class WindowFramework {
         virtual ~WindowFramework();
 
         virtual int create(char* title);
+
+        static void handleKeypress(unsigned char key, int x, int y);
+        virtual void swapBuffers();
 };
 
 #endif // WindowFramework_h

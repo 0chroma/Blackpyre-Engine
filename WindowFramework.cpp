@@ -19,3 +19,11 @@ WindowFramework::~WindowFramework(){
 int WindowFramework::create(char* title){
 	return 0;
 }
+
+void WindowFramework::handleKeypress(unsigned char key, int x, int y){
+
+}
+
+void WindowFramework::swapBuffers(){
+
+};
