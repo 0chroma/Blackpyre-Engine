@@ -8,12 +8,15 @@
 
 #include "GlUtil.h"
 #include "Global.h"
+#include "ObjectManager.h"
 #include "WindowFramework.h"
 
 #ifdef __APPLE__
 #include <OpenGL/OpenGL.h>
+#include <OpenGL/glpng.h>
 #else
 #include <GL/gl.h>
+#include <GL/glpng.h>
 #endif
 
 #include <stdio.h>
@@ -54,7 +57,7 @@ void GlUtil::drawScene(){
 	
 	glMatrixMode(GL_MODELVIEW); //Switch to the drawing perspective
 	glLoadIdentity(); //Reset the drawing perspective
-	
+	/*
 	glPushMatrix();
 	glTranslatef(320.0f, 240.0f, 0.0f);
 	glRotatef(_angle, 0.0f, 0.0f, 1.0f);
@@ -67,8 +70,22 @@ void GlUtil::drawScene(){
 	
 	glEnd(); // GL_QUADS
 	glPopMatrix();
+    */
+    
+    ObjectManager *objMan = ObjectManager::getInstance();
+
+    objMan->renderObjects();
 
 	WindowFramework *window = Global::getInstance()->window;
 	window->swapBuffers();
 	window->postRedisplay();
+}
+
+GLuint GlUtil::loadTexture(const char *filename){
+	//Note that since this is a 2d game engine, this function doesn't bother with mipmaps.
+	//If 3d aspects (eg. backgrounds) are added later, this function needs to be updated.
+    GLuint textureId;
+    
+    
+    return textureId;
 }

@@ -1,0 +1,31 @@
+/*
+ * Blackpyre Engine
+ * Copyright (c) 2010 0chroma. All rights reserved.
+ * 
+ * Source available under the Academic Free License
+ * See LICENSE for licensing information
+ */
+
+#ifndef ObjectManager_h
+#define ObjectManager_h
+
+//class GameObject;
+
+#include "GameObject.h"
+
+class ObjectManager {
+	public:
+        ObjectManager();
+        ~ObjectManager();
+
+        static ObjectManager *getInstance();
+        
+        void renderObjects();
+        int addObject(GameObject object);
+        void removeObject(int id);
+    private:
+        static GameObject objectList[];
+        static ObjectManager *instance;
+};
+
+#endif // ObjectManager_h 

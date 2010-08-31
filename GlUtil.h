@@ -9,6 +9,12 @@
 #ifndef GlUtil_h
 #define GlUtil_h
 
+#ifdef __APPLE__
+#include <OpenGL/OpenGL.h>
+#else
+#include <GL/gl.h>
+#endif
+
 class GlUtil {
 	public:
         GlUtil();
@@ -17,6 +23,7 @@ class GlUtil {
         void initRendering();
         static void handleResize(int w, int h);
         static void drawScene();
+	    GLuint loadTexture(const char *filename);
 };
 
 #endif // GlUtil_h 
