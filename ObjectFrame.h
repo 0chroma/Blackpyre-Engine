@@ -26,6 +26,6 @@ class ObjectFrame : public GameObject{
         float angle;
 
         GameObject *objectList[];
-}
+};
 
 #endif // ObjectFrame_h

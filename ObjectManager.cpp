@@ -6,12 +6,17 @@
  * See LICENSE for licensing information
  */
 
-#include "ObjectManager.h"
 
-class GameObject;
+#include "ObjectManager.h"
+#include "GameObject.h"
+
+GameObject *ObjectManager::rootObject = 0;
+ObjectManager *ObjectManager::instance = 0;
+int ObjectManager::idCounter = 0;
 
 ObjectManager::ObjectManager(){
-
+    idCounter = 0;
+    rootObject = 0;
 }
 
 ObjectManager::~ObjectManager(){
@@ -25,18 +30,43 @@ ObjectManager *ObjectManager::getInstance(){
 	return ObjectManager::instance;
 }
 
-int ObjectManager::addObject(GameObject object){
-    objectList.push_back(object);
-    return (int) objectList.size()-1;
+int ObjectManager::addObject(GameObject *object){
+    if(!rootObject){
+        rootObject = object;
+    }else{
+        GameObject *listObj = rootObject;
+        while(listObj->next){
+            listObj = listObj->next;
+        }
+        listObj->next = object;
+        object->prev = listObj;
+    }
+    object->id = ++idCounter;
+    return (int) object->id;
 }
 
 void ObjectManager::removeObject(int id){
-    
+    GameObject *listObj = rootObject;
+    while(listObj->id != id){
+        listObj = listObj->next;
+    }
+    GameObject *prevObj = listObj->prev;
+    GameObject *nextObj = listObj->next;
+    prevObj->next = nextObj;
+    if(nextObj){
+        nextObj->prev = prevObj;
+    }
+
 }
 
 void ObjectManager::renderObjects(){
-    int i;
-    for(i=objectList.begin(); i!=objectList.end(); ++i){
-        objectList[*i]->render();
+    if(!rootObject){
+        return;
+    }
+    GameObject *listObj;
+    listObj = rootObject;
+    while(listObj){
+        listObj->render();
+        listObj = listObj->next;
     }
 }

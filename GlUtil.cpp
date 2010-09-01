@@ -86,6 +86,7 @@ GLuint GlUtil::loadTexture(const char *filename){
 	//If 3d aspects (eg. backgrounds) are added later, this function needs to be updated.
     GLuint textureId;
     
-    
+    textureId = 0;
+
     return textureId;
 }
