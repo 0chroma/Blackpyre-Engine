@@ -14,7 +14,13 @@ class GameObject {
         GameObject();
         ~GameObject();
 
-        void render();
+        virtual void render();
+    protected:
+        int id;
+        GameObject *next;
+        GameObject *prev;
+
+    friend class ObjectManager;
 };
 
 #endif // GameObject_h 

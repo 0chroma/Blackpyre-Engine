@@ -13,6 +13,8 @@
 //test header
 #include "ObjectFrame.h"
 
+#include <stdio.h>
+
 Global *Global::instance = 0;
 GlUtil *Global::glUtil = 0;
 
@@ -37,12 +39,15 @@ Global *Global::getInstance(){
 }
 
 int Global::init(int argc, char **argv){
+    //test code
+    fprintf(stdout, "adding objframe");
+    ObjectFrame *p = new ObjectFrame(50.0f, 50.0f, 300.0f, 400.0f);
+    objectManager->addObject(p);
+    //end test code
+
 	char title[] = "Blackpyre";
 	window->create(title);
 
-    //test code
-    ObjectFrame *p = new ObjectFrame(0.0f, 0.0f, 300.0f, 300.0f);
-    objectManager->addObject(p);
 
 	return 0;
 }

@@ -9,9 +9,14 @@
 #include "GameObject.h"
 
 GameObject::GameObject(){
-
+    next = 0;
+    prev = 0;
 }
 
 GameObject::~GameObject(){
+
+}
+
+void GameObject::render(){
 
 }

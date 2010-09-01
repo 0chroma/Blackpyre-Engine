@@ -21,11 +21,12 @@ class ObjectManager {
         static ObjectManager *getInstance();
         
         void renderObjects();
-        int addObject(GameObject object);
+        int addObject(GameObject *object);
         void removeObject(int id);
     private:
-        static GameObject objectList[];
+        static GameObject *rootObject;
         static ObjectManager *instance;
+        static int idCounter;
 };
 
 #endif // ObjectManager_h 

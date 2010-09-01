@@ -7,11 +7,12 @@
  */
 
 
-#include "Global.h" 
+#include "Global.h"
 
-
+#include <stdio.h>
 
 int main(int argc, char **argv){
+    fprintf(stdout, "game starting");
 	Global *game = Global::getInstance();
 	game->init();
 	return 0;
