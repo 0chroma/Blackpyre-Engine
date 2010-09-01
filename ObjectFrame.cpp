@@ -37,7 +37,7 @@ void ObjectFrame::render(){
 	glVertex2f(0.0f, 0.0f);
 	glVertex2f(sizeX, 0.0f);
 	glVertex2f(sizeX, sizeY);
-	glVertex2f(0, sizeY);
+	glVertex2f(0.0f, sizeY);
 	
 	glEnd(); // GL_QUADS
 	glPopMatrix();
