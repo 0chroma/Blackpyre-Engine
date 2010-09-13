@@ -13,10 +13,10 @@
 #include <OpenGL/glpng.h>
 #else
 #include <GL/gl.h>
-#include <GL/glpng.h>
 #endif
 
-ObjectFrame::ObjectFrame(float x, float y, float sx, float sy){
+ObjectFrame::ObjectFrame(float x, float y, float sx, float sy)
+    : GameObject(){
     posX = x;
     posY = y;
     sizeX = sx;
