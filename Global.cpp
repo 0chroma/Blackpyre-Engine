@@ -12,6 +12,7 @@
 #include "ObjectManager.h"
 //test header
 #include "ObjectFrame.h"
+#include "Entity.h"
 
 #include <stdio.h>
 
@@ -41,13 +42,14 @@ Global *Global::getInstance(){
 int Global::init(int argc, char **argv){
     //test code
     fprintf(stdout, "adding objframe");
-    ObjectFrame *p = new ObjectFrame(50.0f, 50.0f, 300.0f, 400.0f);
+    ObjectFrame *p = new ObjectFrame(15.0f, 15.0f, 350.0f, 450.0f);
+    Entity *s = new Entity(400.0f, 100.0f, 100.0f, 100.0f);
     objectManager->addObject(p);
+    objectManager->addObject(s);
     //end test code
 
 	char title[] = "Blackpyre";
 	window->create(title);
-
 
 	return 0;
 }

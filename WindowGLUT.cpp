@@ -37,22 +37,33 @@ int WindowGLUT::create(char* title){
 	//fprintf(stdout, "%s\n", title);
 	glUtil->initRendering();
     
-    glutDisplayFunc(GlUtil::drawScene);
+    glutDisplayFunc(WindowGLUT::nullFunc);
 	glutKeyboardFunc(WindowGLUT::handleKeypress);
 	glutReshapeFunc(GlUtil::handleResize);
+    
+    glutTimerFunc(100, WindowGLUT::drawGame, 0);
 
 	glutMainLoop();
 	return 0;
 }
 
+void WindowGLUT::drawGame(int){
+    GlUtil *glUtil = Global::getInstance()->glUtil;
+    glutTimerFunc(33, WindowGLUT::drawGame, 0);
+
+    glUtil->drawScene();
+
+    glutPostRedisplay();
+}
+
 void WindowGLUT::handleKeypress(unsigned char key, int x, int y){
-    //noop
+    //TODO
 }
 
-void WindowGLUT::swapBuffers(){
+void WindowGLUT::nullFunc(){
+    GlUtil *glUtil = Global::getInstance()->glUtil;
+    glUtil->drawScene();
     glutSwapBuffers();
-}
 
-void WindowGLUT::postRedisplay(){
-	glutPostRedisplay();
+    //TODO: some sort of FPS detection
 }

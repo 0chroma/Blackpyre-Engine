@@ -11,6 +11,7 @@
 GameObject::GameObject(){
     next = 0;
     prev = 0;
+    parent = 0;
 }
 
 GameObject::~GameObject(){

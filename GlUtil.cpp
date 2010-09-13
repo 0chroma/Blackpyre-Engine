@@ -75,18 +75,13 @@ void GlUtil::drawScene(){
     ObjectManager *objMan = ObjectManager::getInstance();
 
     objMan->renderObjects();
-
-	WindowFramework *window = Global::getInstance()->window;
-	window->swapBuffers();
-	window->postRedisplay();
 }
 
 GLuint GlUtil::loadTexture(const char *filename){
 	//Note that since this is a 2d game engine, this function doesn't bother with mipmaps.
 	//If 3d aspects (eg. backgrounds) are added later, this function needs to be updated.
     GLuint textureId;
-    
     textureId = 0;
-
+    
     return textureId;
 }

@@ -19,6 +19,7 @@ class GameObject {
         int id;
         GameObject *next;
         GameObject *prev;
+        GameObject *parent;
 
     friend class ObjectManager;
 };
