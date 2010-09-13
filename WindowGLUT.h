@@ -18,8 +18,8 @@ class WindowGLUT : public WindowFramework{
 
         int create(char* title);
         static void handleKeypress(unsigned char key, int x, int y);
-        void swapBuffers();
-	void postRedisplay();
+        static void nullFunc();
+        static void drawGame(int);
 };
 
 #endif // WindowGLUT_h
