@@ -9,17 +9,22 @@
 #ifndef GameObject_h
 #define GameObject_h
 
+#include <stdint.h>
+
 class GameObject {
 	public:
         GameObject();
         ~GameObject();
 
         virtual void render();
+        void setSpawnTime();
+        uint32_t timeSinceSpawn();
     protected:
         int id;
         GameObject *next;
         GameObject *prev;
         GameObject *parent;
+        uint32_t spawnTime;
 
     friend class ObjectManager;
 };

@@ -29,15 +29,16 @@ Entity::~Entity(){
 }
 
 void Entity::render(){
+    angle = timeSinceSpawn()/10;
     glPushMatrix();
-	glTranslatef(posX, posY, 0.0f);
+	glTranslatef(posX+(sizeX/2), posY+(sizeY/2), 0.0f);
 	glRotatef(angle, 0.0f, 0.0f, 1.0f);
 	glBegin(GL_QUADS);
     
-	glVertex2f(0.0f, 0.0f);
-	glVertex2f(sizeX, 0.0f);
-	glVertex2f(sizeX, sizeY);
-	glVertex2f(0.0f, sizeY);
+	glVertex2f(-sizeX/2, -sizeY/2);
+	glVertex2f(sizeX/2, -sizeY/2);
+	glVertex2f(sizeX/2, sizeY/2);
+	glVertex2f(-sizeX/2, sizeY/2);
 	
 	glEnd(); // GL_QUADS
 	glPopMatrix();
