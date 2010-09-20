@@ -7,11 +7,15 @@
  */
 
 #include "GameObject.h"
+#include "WindowFramework.h"
+#include "Global.h"
+#include <stdint.h>
 
 GameObject::GameObject(){
     next = 0;
     prev = 0;
     parent = 0;
+    spawnTime = (uint32_t)0;
 }
 
 GameObject::~GameObject(){
@@ -19,5 +23,13 @@ GameObject::~GameObject(){
 }
 
 void GameObject::render(){
+    
+}
 
+void GameObject::setSpawnTime(){
+    spawnTime = Global::getInstance()->window->getTime();
+}
+
+uint32_t GameObject::timeSinceSpawn(){
+    return Global::getInstance()->window->getTime() - spawnTime;
 }

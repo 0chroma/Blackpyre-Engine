@@ -18,6 +18,7 @@
 #else
 #include <GL/glut.h>
 #endif
+#include <stdint.h>
 
 WindowGLUT::WindowGLUT(int argc, char **argv) : WindowFramework(argc, argv){
 	glutInit(&argc, argv);
@@ -66,4 +67,9 @@ void WindowGLUT::nullFunc(){
     glutSwapBuffers();
 
     //TODO: some sort of FPS detection
+}
+
+uint32_t WindowGLUT::getTime(){
+    //my CS prof said that doing this would be ok, because I need to absctract with SDL which uses Uint32, so if it's wrong then it's not my fault
+    return (uint32_t)glutGet(GLUT_ELAPSED_TIME);
 }

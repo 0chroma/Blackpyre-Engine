@@ -11,6 +11,8 @@
 
 #include "WindowFramework.h"
 
+#include <stdint.h>
+
 class WindowGLUT : public WindowFramework{
     public:
         WindowGLUT(int argc = 0, char **argv = 0);
@@ -20,6 +22,7 @@ class WindowGLUT : public WindowFramework{
         static void handleKeypress(unsigned char key, int x, int y);
         static void nullFunc();
         static void drawGame(int);
+        uint32_t getTime();
 };
 
 #endif // WindowGLUT_h

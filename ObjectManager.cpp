@@ -42,6 +42,7 @@ int ObjectManager::addObject(GameObject *object){
         object->prev = listObj;
     }
     object->id = ++idCounter;
+    object->setSpawnTime();
     return (int) object->id;
 }
 

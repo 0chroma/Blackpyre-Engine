@@ -9,7 +9,7 @@
 #include "WindowFramework.h"
 
 WindowFramework::WindowFramework(int argc, char **argv){
-
+    timeLast = (uint32_t)0;
 }
 
 WindowFramework::~WindowFramework(){
@@ -24,10 +24,13 @@ void WindowFramework::handleKeypress(unsigned char key, int x, int y){
 
 }
 
-void WindowFramework::swapBuffers(){
-
+uint32_t WindowFramework::getTime(){
+    return (uint32_t)0;
 }
 
-void WindowFramework::postRedisplay(){
-
+uint32_t WindowFramework::getTimeSinceLast(){
+    uint32_t now = getTime();
+    uint32_t last = timeLast;
+    timeLast = now;
+    return now - last;
 }
