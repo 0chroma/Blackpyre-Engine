@@ -9,6 +9,8 @@
 #ifndef WindowFramework_h
 #define WindowFramework_h
 
+#include <stdint.h>
+
 class WindowFramework {
     public:
         WindowFramework(int argc = 0, char **argv = 0);
@@ -17,8 +19,10 @@ class WindowFramework {
         virtual int create(char* title);
 
         static void handleKeypress(unsigned char key, int x, int y);
-        virtual void swapBuffers();
-	virtual void postRedisplay();
+        virtual uint32_t getTime();
+        virtual uint32_t getTimeSinceLast();
+    protected:
+        uint32_t timeLast;
 };
 
 #endif // WindowFramework_h
