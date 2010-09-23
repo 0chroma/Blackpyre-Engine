@@ -11,11 +11,22 @@
 #include "Global.h"
 #include <stdint.h>
 
-GameObject::GameObject(){
+GameObject::GameObject(float x, float y, float sx, float sy, float a){
     next = 0;
     prev = 0;
     parent = 0;
     spawnTime = (uint32_t)0;
+
+    posX = x;
+    posY = y;
+    initialPosX = x;
+    initialPosY = y;
+    sizeX = sx;
+    sizeY = sy;
+    initialSizeX = sx;
+    initialSizeY = sy;
+    angle = a;
+    initialAngle = a;
 }
 
 GameObject::~GameObject(){
@@ -24,6 +35,10 @@ GameObject::~GameObject(){
 
 void GameObject::render(){
     
+}
+
+void GameObject::update(){
+
 }
 
 void GameObject::setSpawnTime(){

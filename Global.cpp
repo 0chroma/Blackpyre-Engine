@@ -42,11 +42,25 @@ Global *Global::getInstance(){
 int Global::init(int argc, char **argv){
     //test code
     fprintf(stdout, "adding objframe");
-    ObjectFrame *p = new ObjectFrame(15.0f, 15.0f, 350.0f, 450.0f);
-    Entity *s = new Entity(400.0f, 100.0f, 100.0f, 100.0f);
+    ObjectFrame *p = new ObjectFrame(15.0f, 15.0f, 50.0f, 50.0f, 0.0f);
+    Entity *a = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 0.0f);
+    Entity *b = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 45.0f);
+    Entity *c = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 90.0f);
+    Entity *d = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 135.0f);
+    Entity *e = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 180.0f);
+    Entity *f = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 225.0f);
+    Entity *g = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 270.0f);
+    Entity *h = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 315.0f);
     objectManager->addObject(p);
-    objectManager->addObject(s);
-    //end test code
+    objectManager->addObject(a);
+    objectManager->addObject(b);
+    objectManager->addObject(c);
+    objectManager->addObject(d);
+    objectManager->addObject(e);
+    objectManager->addObject(f); 
+    objectManager->addObject(g);
+    objectManager->addObject(h);
+   //end test code
 
 	char title[] = "Blackpyre";
 	window->create(title);
