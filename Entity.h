@@ -13,17 +13,11 @@
 
 class Entity : public GameObject{
     public:
-        Entity(float x, float y, float sx, float sy);
+        Entity(float x, float y, float sx, float sy, float a);
         ~Entity();
 
         void render();
-
-    private:
-        float posX;
-        float posY;
-        float sizeX;
-        float sizeY;
-        float angle;
+        void update();
 };
 
 #endif // Entity_h

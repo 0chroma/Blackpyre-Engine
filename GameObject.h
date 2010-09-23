@@ -13,18 +13,30 @@
 
 class GameObject {
 	public:
-        GameObject();
+        GameObject(float x, float y, float sx, float sy, float a);
         ~GameObject();
 
         virtual void render();
         void setSpawnTime();
         uint32_t timeSinceSpawn();
+        virtual void update();
     protected:
         int id;
         GameObject *next;
         GameObject *prev;
         GameObject *parent;
         uint32_t spawnTime;
+ 
+        float posX;
+        float posY;
+        float initialPosX;
+        float initialPosY;
+        float sizeX;
+        float sizeY;
+        float initialSizeX;
+        float initialSizeY;
+        float angle;
+        float initialAngle;
 
     friend class ObjectManager;
 };

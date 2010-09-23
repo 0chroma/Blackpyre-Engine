@@ -15,23 +15,23 @@
 #include <GL/gl.h>
 #endif
 
-ObjectFrame::ObjectFrame(float x, float y, float sx, float sy)
-    : GameObject(){
-    posX = x;
-    posY = y;
-    sizeX = sx;
-    sizeY = sy;
-    angle = 0;
+ObjectFrame::ObjectFrame(float x, float y, float sx, float sy, float a)
+    : GameObject(x,y,sx,sy,a){
 }
 
 ObjectFrame::~ObjectFrame(){
 
 }
 
+void ObjectFrame::update(){
+    
+}
+
 void ObjectFrame::render(){
+    update();
     glPushMatrix();
 	glTranslatef(posX, posY, 0.0f);
-	glRotatef(angle, 0.0f, 0.0f, 1.0f);
+	glRotatef(angle*(180/3.14), 0.0f, 0.0f, 1.0f);
 	glBegin(GL_QUADS);
     
 	glVertex2f(0.0f, 0.0f);

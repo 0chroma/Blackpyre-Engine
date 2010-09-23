@@ -13,18 +13,13 @@
 
 class ObjectFrame : public GameObject{
     public:
-        ObjectFrame(float x, float y, float sx, float sy);
+        ObjectFrame(float x, float y, float sx, float sy, float a);
         ~ObjectFrame();
-
+        
+        void update();
         void render();
 
     private:
-        float posX;
-        float posY;
-        float sizeX;
-        float sizeY;
-        float angle;
-
         GameObject *objectList[];
 };
 
