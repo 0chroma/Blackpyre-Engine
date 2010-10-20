@@ -20,6 +20,7 @@
 #endif
 
 #include <stdio.h>
+#include <string.h>
 
 float _angle = 0.0f;
 
@@ -36,11 +37,15 @@ void GlUtil::initRendering(){
 }
 
 void GlUtil::handleResize(int w, int h){
+    fprintf(stdout, "width is %u, height is %u\n", w, h);
+
+    glViewport(0, 0, w, h);
+
 	glMatrixMode(GL_PROJECTION); //Switch to setting the camera perspective
 	
 	glLoadIdentity(); //Reset the camera
 
-    glOrtho(0, w, h, 0, 0, 1);
+    glOrtho(0, 640, 480, 0, 0, 1);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     glTranslatef(0.375, 0.375, 0);
@@ -57,21 +62,9 @@ void GlUtil::drawScene(){
 	
 	glMatrixMode(GL_MODELVIEW); //Switch to the drawing perspective
 	glLoadIdentity(); //Reset the drawing perspective
-	/*
-	glPushMatrix();
-	glTranslatef(320.0f, 240.0f, 0.0f);
-	glRotatef(_angle, 0.0f, 0.0f, 1.0f);
-	glBegin(GL_QUADS);
-    
-	glVertex2f(-150.0f, -150.0f);
-	glVertex2f(150.0f, -150.0f);
-	glVertex2f(150.0f, 150.0f);
-	glVertex2f(-150.0f, 150.0f);
 	
-	glEnd(); // GL_QUADS
-	glPopMatrix();
-    */
-    
+	
+    //glTranslatef(0.375, 0.375, 0);
     ObjectManager *objMan = ObjectManager::getInstance();
 
     objMan->renderObjects();
@@ -83,5 +76,7 @@ GLuint GlUtil::loadTexture(const char *filename){
     GLuint textureId;
     textureId = 0;
     
+    
+
     return textureId;
 }
