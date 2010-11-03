@@ -11,10 +11,19 @@
 
 #include "GameObject.h"
 
+#ifdef __APPLE__
+#include <OpenGL/OpenGL.h>
+#else
+#include <GL/gl.h>
+#endif
+
 class Entity : public GameObject{
     public:
-        Entity(float x, float y, float sx, float sy, float a);
+        Entity(float x, float y, float sx, float sy, float a, const char *sprite);
         ~Entity();
+
+        GLuint texture;
+        const char *sprite;
 
         void render();
         void update();

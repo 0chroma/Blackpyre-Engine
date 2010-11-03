@@ -6,14 +6,10 @@
  * See LICENSE for licensing information
  */
 
+#ifndef compat_h
+#define compat_h
 
-#include "Global.h"
+void setupPath();
+const char* dataPath(const char* path);
 
-#include <stdio.h>
-
-int main(int argc, char **argv){
-    fprintf(stderr, "game starting...\n");
-	Global *game = Global::getInstance();
-	game->init();
-	return 0;
-}
+#endif // compat_h

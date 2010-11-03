@@ -19,6 +19,7 @@ class Global {
 	~Global();
 
         int init(int argc = 0, char **argv = 0);
+        void setupGame();
 	    static Global *getInstance();
 	
     	static WindowFramework  *window;
