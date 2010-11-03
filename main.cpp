@@ -12,7 +12,7 @@
 #include <stdio.h>
 
 int main(int argc, char **argv){
-    fprintf(stdout, "game starting");
+    fprintf(stderr, "game starting...\n");
 	Global *game = Global::getInstance();
 	game->init();
 	return 0;

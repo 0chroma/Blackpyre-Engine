@@ -35,9 +35,11 @@ int WindowGLUT::create(char* title){
 	glutInitWindowSize(640, 480);
 	
 	glutCreateWindow(title);
-	//fprintf(stdout, "%s\n", title);
+	//fprintf(stderr, "%s\n", title);
 	glUtil->initRendering();
     
+    Global::getInstance()->setupGame();
+
     glutDisplayFunc(WindowGLUT::nullFunc);
 	glutKeyboardFunc(WindowGLUT::handleKeypress);
 	glutReshapeFunc(GlUtil::handleResize);

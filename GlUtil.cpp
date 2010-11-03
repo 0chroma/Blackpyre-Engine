@@ -10,6 +10,7 @@
 #include "Global.h"
 #include "ObjectManager.h"
 #include "WindowFramework.h"
+#include "util.h"
 
 #ifdef __APPLE__
 #include <OpenGL/OpenGL.h>
@@ -37,7 +38,7 @@ void GlUtil::initRendering(){
 }
 
 void GlUtil::handleResize(int w, int h){
-    fprintf(stdout, "width is %u, height is %u\n", w, h);
+    fprintf(stderr, "width is %u, height is %u\n", w, h);
 
     glViewport(0, 0, w, h);
 
@@ -74,9 +75,16 @@ GLuint GlUtil::loadTexture(const char *filename){
 	//Note that since this is a 2d game engine, this function doesn't bother with mipmaps.
 	//If 3d aspects (eg. backgrounds) are added later, this function needs to be updated.
     GLuint textureId;
-    textureId = 0;
+    //TODO: support other formats
+    pngInfo tmpInfo;
+    textureId = pngBind(dataPath(filename), PNG_NOMIPMAPS, PNG_ALPHA, &tmpInfo, GL_CLAMP, GL_NEAREST, GL_NEAREST);
     
-    
-
+    if (textureId != 0) {
+           fprintf(stderr, "Loaded %s successfully\n", dataPath(filename));
+    }
+    else {
+           fprintf(stderr, "Can't load %s\n", dataPath(filename));
+    }
+    glDisable(GL_TEXTURE_2D);
     return textureId;
 }
