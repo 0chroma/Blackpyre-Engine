@@ -52,14 +52,14 @@ int Global::init(int argc, char **argv){
 
 void Global::setupGame(){
     ObjectFrame *p = new ObjectFrame(15.0f, 15.0f, 50.0f, 50.0f, 0.0f);
-    Entity *a = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 0.0f, "testTexture.png");
-    Entity *b = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 45.0f, "testTexture.png");
-    Entity *c = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 90.0f, "testTexture.png");
-    Entity *d = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 135.0f, "testTexture.png");
-    Entity *e = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 180.0f, "testTexture.png");
-    Entity *f = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 225.0f, "testTexture.png");
-    Entity *g = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 270.0f, "testTexture.png");
-    Entity *h = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 315.0f, "testTexture.png");
+    Entity *a = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 0.0f, "bullet.png");
+    Entity *b = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 45.0f, "bullet.png");
+    Entity *c = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 90.0f, "bullet.png");
+    Entity *d = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 135.0f, "bullet.png");
+    Entity *e = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 180.0f, "bullet.png");
+    Entity *f = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 225.0f, "bullet.png");
+    Entity *g = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 270.0f, "bullet.png");
+    Entity *h = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 315.0f, "bullet.png");
     objectManager->addObject(p);
     objectManager->addObject(a);
     objectManager->addObject(b);
