@@ -10,6 +10,7 @@
 #include "WindowGLUT.h"
 #include "GlUtil.h"
 #include "ObjectManager.h"
+#include "util.h"
 //test header
 #include "ObjectFrame.h"
 #include "Entity.h"
@@ -40,17 +41,25 @@ Global *Global::getInstance(){
 }
 
 int Global::init(int argc, char **argv){
-    //test code
-    fprintf(stdout, "adding objframe");
+    setupPath();
+
+	char title[] = "Blackpyre";
+	window->create(title);
+
+
+	return 0;
+}
+
+void Global::setupGame(){
     ObjectFrame *p = new ObjectFrame(15.0f, 15.0f, 50.0f, 50.0f, 0.0f);
-    Entity *a = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 0.0f);
-    Entity *b = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 45.0f);
-    Entity *c = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 90.0f);
-    Entity *d = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 135.0f);
-    Entity *e = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 180.0f);
-    Entity *f = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 225.0f);
-    Entity *g = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 270.0f);
-    Entity *h = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 315.0f);
+    Entity *a = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 0.0f, "testTexture.png");
+    Entity *b = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 45.0f, "testTexture.png");
+    Entity *c = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 90.0f, "testTexture.png");
+    Entity *d = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 135.0f, "testTexture.png");
+    Entity *e = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 180.0f, "testTexture.png");
+    Entity *f = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 225.0f, "testTexture.png");
+    Entity *g = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 270.0f, "testTexture.png");
+    Entity *h = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 315.0f, "testTexture.png");
     objectManager->addObject(p);
     objectManager->addObject(a);
     objectManager->addObject(b);
@@ -59,11 +68,5 @@ int Global::init(int argc, char **argv){
     objectManager->addObject(e);
     objectManager->addObject(f); 
     objectManager->addObject(g);
-    objectManager->addObject(h);
-   //end test code
-
-	char title[] = "Blackpyre";
-	window->create(title);
-
-	return 0;
+    objectManager->addObject(h); 
 }
