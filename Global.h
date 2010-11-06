@@ -13,6 +13,7 @@
 class WindowFramework;
 class GlUtil;
 class ObjectManager;
+class ResourceManager;
 
 class Global {
     public:
@@ -25,6 +26,7 @@ class Global {
     	static WindowFramework  *window;
         static GlUtil           *glUtil;
         static ObjectManager    *objectManager;
+        static ResourceManager  *resourceManager;
 
     private:
         static Global *instance;
