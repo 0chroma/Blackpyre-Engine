@@ -10,6 +10,7 @@
 #include "WindowGLUT.h"
 #include "GlUtil.h"
 #include "ObjectManager.h"
+#include "ResourceManager.h"
 #include "util.h"
 //test header
 #include "ObjectFrame.h"
@@ -22,10 +23,12 @@ GlUtil *Global::glUtil = 0;
 
 WindowFramework *Global::window = 0;
 ObjectManager *Global::objectManager = 0;
+ResourceManager *Global::resourceManager = 0;
 
 Global::Global(){
 	window = new WindowGLUT();
     objectManager = ObjectManager::getInstance();
+    resourceManager = ResourceManager::getInstance();
     glUtil = new GlUtil();
 }
 

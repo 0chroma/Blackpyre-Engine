@@ -9,6 +9,7 @@
 #include "Entity.h"
 #include "Global.h"
 #include "GlUtil.h"
+#include "ResourceManager.h"
 
 #ifdef __APPLE__
 #include <OpenGL/OpenGL.h>
@@ -26,8 +27,8 @@ Entity::Entity(float x, float y, float sx, float sy, float a, const char *sp = "
     : GameObject(x,y,sx,sy,a){
     sprite = sp;
     if(sp){
-        GlUtil *glUtil = Global::getInstance()->glUtil;
-        texture = glUtil->loadTexture(sprite);
+        ResourceManager *resourceManager = Global::getInstance()->resourceManager;
+        texture = resourceManager->loadTexture(sprite);
     }
 }
 
