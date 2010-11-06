@@ -82,7 +82,7 @@ GLuint GlUtil::loadTexture(const char *filename){
     textureId = pngBind(dataPath(filename), PNG_NOMIPMAPS, PNG_ALPHA, &tmpInfo, GL_CLAMP, GL_NEAREST, GL_NEAREST);
     
     if (textureId != 0) {
-           fprintf(stderr, "Loaded %s successfully\n", dataPath(filename));
+           fprintf(stderr, "Loaded %s successfully with textureId of %i\n", dataPath(filename), textureId);
     }
     else {
            fprintf(stderr, "Can't load %s\n", dataPath(filename));
