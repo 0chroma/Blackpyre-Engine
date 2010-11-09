@@ -20,6 +20,11 @@
 #endif
 #include <stdint.h>
 
+int WindowGLUT::last_time = 0;
+int WindowGLUT::now_time = 0;
+int WindowGLUT::fps = 0;
+int WindowGLUT::frame = 0;
+
 WindowGLUT::WindowGLUT(int argc, char **argv) : WindowFramework(argc, argv){
 	glutInit(&argc, argv);
 }
@@ -67,8 +72,18 @@ void WindowGLUT::nullFunc(){
     GlUtil *glUtil = Global::getInstance()->glUtil;
     glUtil->drawScene();
     glutSwapBuffers();
-
-    //TODO: some sort of FPS detection
+    
+    frame++;
+    if(!(frame%10)){
+        now_time = glutGet(GLUT_ELAPSED_TIME);
+        if(last_time){
+            fps = (10.0/(now_time-last_time))*1000.0;
+        }
+        last_time = now_time;
+        char title[50];
+        sprintf(title, "Blackpyre - fps: %i", fps);
+        glutSetWindowTitle(title);
+    }
 }
 
 uint32_t WindowGLUT::getTime(){
