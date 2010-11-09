@@ -14,6 +14,7 @@ class WindowFramework;
 class GlUtil;
 class ObjectManager;
 class ResourceManager;
+class Scripting;
 
 class Global {
     public:
@@ -21,12 +22,14 @@ class Global {
 
         int init(int argc = 0, char **argv = 0);
         void setupGame();
+        void quitGame();
 	    static Global *getInstance();
 	
     	static WindowFramework  *window;
         static GlUtil           *glUtil;
         static ObjectManager    *objectManager;
         static ResourceManager  *resourceManager;
+        static Scripting        *scripting;
 
     private:
         static Global *instance;
