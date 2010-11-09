@@ -1,19 +1,41 @@
-CC = g++
-CFLAGS = -Wall -g
-PROG = blackpyre
+SUPPORT_DIRS	=	 \
+			./support/glpng/src
 
-SRCS = main.h main.cpp Global.h Global.cpp WindowFramework.h WindowFramework.cpp WindowGLUT.h WindowGLUT.cpp GlUtil.h GlUtil.cpp ObjectManager.h ObjectManager.cpp GameObject.h GameObject.cpp ObjectFrame.h ObjectFrame.cpp Entity.h Entity.cpp util.h util.cpp ResourceManager.h ResourceManager.cpp
+V8_DIRS = ./support/v8
 
-ifeq ($(shell uname),Darwin)
-	LIBS = -framework OpenGL -framework GLUT -framework GLU -framework glpng
-else
-	LIBS = -lglut -lGLU -lglpng
-endif
+BLACKPYRE_DIRS	=	\
+			./src
 
-all: $(PROG)
+all: $(SUPPORT_DIRS) $(V8_DIRS) blackpyre
 
-$(PROG):	$(SRCS)
-	$(CC) $(CFLAGS) -o $(PROG) $(SRCS) $(LIBS)
+blackpyre: $(BLACKPYRE_DIRS) finish
+
+v8: $(V8_DIRS) finish
+
+support: $(SUPPORT_DIRS)
+
+$(BLACKPYRE_DIRS): FORCE
+	cd $@; $(MAKE)
+
+$(SUPPORT_DIRS): FORCE
+	cd $@; $(MAKE)
+
+$(V8_DIRS): FORCE
+	cd $@;  scons mode=release library=shared snapshot=off
+
+finish: 
+	@echo ""
+	@mv -vf ./src/blackpyre ./bin 
+	@chmod +x ./bin/blackpyre
+	@echo ""
+	-ls --color ./bin/*
+	@echo ""
+	@echo "Now cd to ./bin and run blackpyre!"
+	@echo ""
 
 clean:
-	rm -f $(PROG)
+	for i in $(SUPPORT_DIRS); do ( cd $$i ; $(MAKE) clean ) ; done
+	for i in $(BLACKPYRE_DIRS); do ( cd $$i ; $(MAKE) clean ) ; done
+	for i in $(V8_DIRS); do ( cd $$i ; scons -c ) ; done
+	
+FORCE:

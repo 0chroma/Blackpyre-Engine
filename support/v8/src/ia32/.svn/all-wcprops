@@ -1,0 +1,179 @@
+K 25
+svn:wc:ra_dav:version-url
+V 33
+/svn/!svn/ver/5757/trunk/src/ia32
+END
+jump-target-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/!svn/ver/4701/trunk/src/ia32/jump-target-ia32.cc
+END
+assembler-ia32-inl.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/5276/trunk/src/ia32/assembler-ia32-inl.h
+END
+register-allocator-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/4701/trunk/src/ia32/register-allocator-ia32.cc
+END
+register-allocator-ia32.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/2866/trunk/src/ia32/register-allocator-ia32.h
+END
+full-codegen-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/5748/trunk/src/ia32/full-codegen-ia32.cc
+END
+regexp-macro-assembler-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/5716/trunk/src/ia32/regexp-macro-assembler-ia32.cc
+END
+codegen-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/5757/trunk/src/ia32/codegen-ia32.cc
+END
+regexp-macro-assembler-ia32.h
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/5675/trunk/src/ia32/regexp-macro-assembler-ia32.h
+END
+codegen-ia32.h
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/5757/trunk/src/ia32/codegen-ia32.h
+END
+code-stubs-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/5716/trunk/src/ia32/code-stubs-ia32.cc
+END
+code-stubs-ia32.h
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/!svn/ver/5412/trunk/src/ia32/code-stubs-ia32.h
+END
+macro-assembler-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/5716/trunk/src/ia32/macro-assembler-ia32.cc
+END
+assembler-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/!svn/ver/5716/trunk/src/ia32/assembler-ia32.cc
+END
+frames-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/5502/trunk/src/ia32/frames-ia32.cc
+END
+stub-cache-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/5757/trunk/src/ia32/stub-cache-ia32.cc
+END
+virtual-frame-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/5532/trunk/src/ia32/virtual-frame-ia32.cc
+END
+macro-assembler-ia32.h
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/5716/trunk/src/ia32/macro-assembler-ia32.h
+END
+simulator-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/!svn/ver/1797/trunk/src/ia32/simulator-ia32.cc
+END
+assembler-ia32.h
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/5716/trunk/src/ia32/assembler-ia32.h
+END
+frames-ia32.h
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/3333/trunk/src/ia32/frames-ia32.h
+END
+disasm-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/5532/trunk/src/ia32/disasm-ia32.cc
+END
+virtual-frame-ia32.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/5241/trunk/src/ia32/virtual-frame-ia32.h
+END
+simulator-ia32.h
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/5716/trunk/src/ia32/simulator-ia32.h
+END
+register-allocator-ia32-inl.h
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/2866/trunk/src/ia32/register-allocator-ia32-inl.h
+END
+codegen-ia32-inl.h
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/3608/trunk/src/ia32/codegen-ia32-inl.h
+END
+debug-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/5388/trunk/src/ia32/debug-ia32.cc
+END
+cpu-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/!svn/ver/4701/trunk/src/ia32/cpu-ia32.cc
+END
+builtins-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/5532/trunk/src/ia32/builtins-ia32.cc
+END
+ic-ia32.cc
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/5580/trunk/src/ia32/ic-ia32.cc
+END
