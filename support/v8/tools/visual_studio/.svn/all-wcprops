@@ -1,0 +1,221 @@
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/5675/trunk/tools/visual_studio
+END
+v8_snapshot_x64.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/2722/trunk/tools/visual_studio/v8_snapshot_x64.vcproj
+END
+v8_snapshot_cc.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/!svn/ver/1853/trunk/tools/visual_studio/v8_snapshot_cc.vcproj
+END
+v8_snapshot_cc_x64.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/2722/trunk/tools/visual_studio/v8_snapshot_cc_x64.vcproj
+END
+v8_shell_sample_arm.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/3781/trunk/tools/visual_studio/v8_shell_sample_arm.vcproj
+END
+v8_base_arm.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/5675/trunk/tools/visual_studio/v8_base_arm.vcproj
+END
+v8_x64.sln
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/2722/trunk/tools/visual_studio/v8_x64.sln
+END
+x64.vsprops
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/4453/trunk/tools/visual_studio/x64.vsprops
+END
+v8_process_sample.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/3781/trunk/tools/visual_studio/v8_process_sample.vcproj
+END
+v8_process_sample_x64.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/3781/trunk/tools/visual_studio/v8_process_sample_x64.vcproj
+END
+v8.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/4238/trunk/tools/visual_studio/v8.vcproj
+END
+d8js2c.cmd
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/618/trunk/tools/visual_studio/d8js2c.cmd
+END
+v8_x64.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/4238/trunk/tools/visual_studio/v8_x64.vcproj
+END
+common.vsprops
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/4410/trunk/tools/visual_studio/common.vsprops
+END
+v8_cctest.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/4730/trunk/tools/visual_studio/v8_cctest.vcproj
+END
+v8_cctest_x64.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/4209/trunk/tools/visual_studio/v8_cctest_x64.vcproj
+END
+ia32.vsprops
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/4453/trunk/tools/visual_studio/ia32.vsprops
+END
+d8_arm.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/3781/trunk/tools/visual_studio/d8_arm.vcproj
+END
+v8_shell_sample.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/3781/trunk/tools/visual_studio/v8_shell_sample.vcproj
+END
+v8_arm.sln
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/2866/trunk/tools/visual_studio/v8_arm.sln
+END
+v8.sln
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/!svn/ver/1181/trunk/tools/visual_studio/v8.sln
+END
+v8_shell_sample_x64.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/3781/trunk/tools/visual_studio/v8_shell_sample_x64.vcproj
+END
+v8_base.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/5675/trunk/tools/visual_studio/v8_base.vcproj
+END
+arm.vsprops
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/4453/trunk/tools/visual_studio/arm.vsprops
+END
+v8_base_x64.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/5675/trunk/tools/visual_studio/v8_base_x64.vcproj
+END
+release.vsprops
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/439/trunk/tools/visual_studio/release.vsprops
+END
+v8_process_sample_arm.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/3781/trunk/tools/visual_studio/v8_process_sample_arm.vcproj
+END
+v8_arm.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/4238/trunk/tools/visual_studio/v8_arm.vcproj
+END
+debug.vsprops
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/2811/trunk/tools/visual_studio/debug.vsprops
+END
+v8_cctest_arm.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/4209/trunk/tools/visual_studio/v8_cctest_arm.vcproj
+END
+js2c.cmd
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/!svn/ver/4238/trunk/tools/visual_studio/js2c.cmd
+END
+v8_mksnapshot.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/!svn/ver/3781/trunk/tools/visual_studio/v8_mksnapshot.vcproj
+END
+v8_mksnapshot_x64.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/3781/trunk/tools/visual_studio/v8_mksnapshot_x64.vcproj
+END
+README.txt
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/1360/trunk/tools/visual_studio/README.txt
+END
+d8.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/3781/trunk/tools/visual_studio/d8.vcproj
+END
+v8_snapshot.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/1853/trunk/tools/visual_studio/v8_snapshot.vcproj
+END
+d8_x64.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/3781/trunk/tools/visual_studio/d8_x64.vcproj
+END
