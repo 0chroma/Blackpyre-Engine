@@ -23,6 +23,11 @@ class WindowGLUT : public WindowFramework{
         static void nullFunc();
         static void drawGame(int);
         uint32_t getTime();
+        static int fps;
+        static int frame;
+    private:
+        static int last_time;
+        static int now_time;
 };
 
 #endif // WindowGLUT_h
