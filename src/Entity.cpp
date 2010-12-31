@@ -13,7 +13,6 @@
 
 #ifdef __APPLE__
 #include <OpenGL/OpenGL.h>
-#include <OpenGL/glpng.h>
 #else
 #include <GL/gl.h>
 #endif

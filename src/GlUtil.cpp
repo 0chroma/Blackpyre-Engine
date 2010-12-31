@@ -14,11 +14,11 @@
 
 #ifdef __APPLE__
 #include <OpenGL/OpenGL.h>
-#include <OpenGL/glpng.h>
 #else
 #include <GL/gl.h>
-#include <GL/glpng.h>
 #endif
+
+#include <GL/glpng.h>
 
 #include <stdio.h>
 #include <string.h>
