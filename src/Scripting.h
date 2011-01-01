@@ -24,7 +24,7 @@ class Scripting {
         static v8::Handle<v8::Value> func_quit(const v8::Arguments& args);
         static v8::Handle<v8::Value> func_print(const v8::Arguments& args);
 
-        static v8::Handle<v8::Value> func_makeEntity(const v8::Arguments& args); 
+        static v8::Handle<v8::Value> func_createEntity(const v8::Arguments& args); 
     private:
         static Scripting *instance;
         
