@@ -6,6 +6,13 @@ V8_DIRS = ./support/v8
 BLACKPYRE_DIRS	=	\
 			./src
 
+LBITS := $(shell getconf LONG_BIT)
+ifeq ($(LBITS),64)
+    V8_EXTRA_ARGS = arch=x64
+else
+    V8_EXTRA_ARGS = 
+endif
+
 all: $(SUPPORT_DIRS) $(V8_DIRS) blackpyre
 
 blackpyre: $(BLACKPYRE_DIRS) finish
@@ -21,7 +28,7 @@ $(SUPPORT_DIRS): FORCE
 	cd $@; $(MAKE)
 
 $(V8_DIRS): FORCE
-	cd $@;  scons mode=release library=shared snapshot=off
+	cd $@;  scons mode=release library=static snapshot=off $(V8_EXTRA_ARGS)
 
 finish: 
 	@echo ""
