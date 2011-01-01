@@ -75,12 +75,24 @@ v8::Handle<v8::ObjectTemplate> Scripting::getObjectTemplate(){
     global->Set(v8::String::New("quit"), v8::FunctionTemplate::New(func_quit));
     // Bind the global 'print' function to the C++ Print callback.
     global->Set(v8::String::New("print"), v8::FunctionTemplate::New(func_print));
-    global->Set(v8::String::New("entity"), v8::FunctionTemplate::New(func_makeEntity));
+    global->Set(v8::String::New("Entity"), getEntityObjectTemplate());
 
     return global;
 }
 
-// ======== Runtime ==========
+// ======== Object Template Constructors for Entity and friends ========
+
+v8::Handle<v8::ObjectTemplate> Scripting::getEntityObjectTemplate(){
+    v8::Handle<v8::ObjectTemplate> entity_template = v8::ObjectTemplate::New();
+    
+    //give our entity template an internal field so we can track multiple instances
+    entity_template->SetInternalFieldCount(1);
+
+    
+
+}
+
+// ======== Runtime ========
 
 /*===========TEMOPORARY TEST FUNC========================*/
 
