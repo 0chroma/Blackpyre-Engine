@@ -27,6 +27,12 @@ class Entity : public GameObject{
 
         void render();
         void update();
+
+        void show();
+        void hide();
+
+    private:
+        int objectmanagerId;
 };
 
 #endif // Entity_h
