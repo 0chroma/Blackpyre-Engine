@@ -6,7 +6,7 @@
  * See LICENSE for licensing information
  */
 
-//NOTE: a lot of this stuff I borrowed from v8's shell sample code
+//NOTE: a lot of this stuff I borrowed from v8's shell sample code.
 
 #include "Scripting.h"
 #include "Global.h"
@@ -108,22 +108,6 @@ v8::Handle<v8::Object> Scripting::setupEntityClass(v8::Handle<v8::Object> dest){
 
 // ======== Policy Classes for v8::Juice ========
 
-namespace v8 { namespace juice { namespace cw {
-    // constructor binding
-    template <>
-    struct Factory<Entity>
-        : Factory_CtorForwarder<Entity,
-            tmp::TypeList<
-                convert::CtorForwarder6<Entity,float,float,float,float,float,std::string>
-            >
-        >
-    {};
-}}}
-
-//define JS-side name for classes
-JUICE_CLASSWRAP_CLASSNAME(Entity,"Entity")
-
-
 // we need this so that we can convert floats to and from their JS natives, since Juice doesn't support it out of the box
 
 namespace v8 { namespace juice { namespace convert {
@@ -149,7 +133,23 @@ namespace v8 { namespace juice { namespace convert {
         // Optional:
         static const NativeToJS<float> FloatToJS = NativeToJS<float>();
         static const JSToNative<float> JSToFloat = JSToNative<float>();
-} } }
+}}}
+
+namespace v8 { namespace juice { namespace cw {
+    // constructor binding
+    template <>
+    struct Factory<Entity>
+        : Factory_CtorForwarder<Entity,
+            tmp::TypeList<
+                convert::CtorForwarder6<Entity,float,float,float,float,float,std::string>
+            >
+        >
+    {};
+}}}
+
+//define JS-side name for classes
+JUICE_CLASSWRAP_CLASSNAME(Entity,"Entity")
+
 
 // ======== Runtime ========
 /*
@@ -215,8 +215,15 @@ v8::Handle<v8::Value> Scripting::func_quit(const v8::Arguments& args) {
 
 // Reads a file into a v8 string.
 v8::Handle<v8::String> Scripting::ReadFile(const char* name) {
+    if( !name || !*name ) {
+        v8::ThrowException(v8::String::New((const char*)"Non-empty String argument required!"));
+        return v8::String::New((const char*)"");
+    }
     FILE* file = fopen(dataPath(name), "rb");
-    if (file == NULL) return v8::Handle<v8::String>();
+    if (file == NULL){
+        v8::ThrowException(v8::String::New((const char*)"Could not open file."));
+        return v8::String::New((const char*)"");
+    }
 
     fseek(file, 0, SEEK_END);
     int size = ftell(file);
