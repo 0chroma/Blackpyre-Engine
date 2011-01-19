@@ -30,7 +30,7 @@
 
 // The original source code covered by the above license above has been
 // modified significantly by Google Inc.
-// Copyright 2006-2009 the V8 project authors. All rights reserved.
+// Copyright 2010 the V8 project authors. All rights reserved.
 
 // A lightweight X64 Assembler.
 
@@ -88,11 +88,48 @@ static inline bool is_uint32(uint64_t x) {
 //
 
 struct Register {
+  // The non-allocatable registers are:
+  //  rsp - stack pointer
+  //  rbp - frame pointer
+  //  rsi - context register
+  //  r10 - fixed scratch register
+  //  r13 - root register
+  //  r15 - smi constant register
+  static const int kNumRegisters = 16;
+  static const int kNumAllocatableRegisters = 10;
+
+  static int ToAllocationIndex(Register reg) {
+    return allocationIndexByRegisterCode[reg.code()];
+  }
+
+  static Register FromAllocationIndex(int index) {
+    ASSERT(index >= 0 && index < kNumAllocatableRegisters);
+    Register result = { registerCodeByAllocationIndex[index] };
+    return result;
+  }
+
+  static const char* AllocationIndexToString(int index) {
+    ASSERT(index >= 0 && index < kNumAllocatableRegisters);
+    const char* const names[] = {
+      "rax",
+      "rbx",
+      "rdx",
+      "rcx",
+      "rdi",
+      "r8",
+      "r9",
+      "r11",
+      "r14",
+      "r12"
+    };
+    return names[index];
+  }
+
   static Register toRegister(int code) {
     Register r = { code };
     return r;
   }
-  bool is_valid() const { return 0 <= code_ && code_ < 16; }
+  bool is_valid() const { return 0 <= code_ && code_ < kNumRegisters; }
   bool is(Register reg) const { return code_ == reg.code_; }
   int code() const {
     ASSERT(is_valid());
@@ -116,6 +153,9 @@ struct Register {
   // Unfortunately we can't make this private in a struct when initializing
   // by assignment.
   int code_;
+ private:
+  static const int registerCodeByAllocationIndex[kNumAllocatableRegisters];
+  static const int allocationIndexByRegisterCode[kNumRegisters];
 };
 
 const Register rax = { 0 };
@@ -138,7 +178,44 @@ const Register no_reg = { -1 };
 
 
 struct XMMRegister {
-  bool is_valid() const { return 0 <= code_ && code_ < 16; }
+  static const int kNumRegisters = 16;
+  static const int kNumAllocatableRegisters = 15;
+
+  static int ToAllocationIndex(XMMRegister reg) {
+    ASSERT(reg.code() != 0);
+    return reg.code() - 1;
+  }
+
+  static XMMRegister FromAllocationIndex(int index) {
+    ASSERT(0 <= index && index < kNumAllocatableRegisters);
+    XMMRegister result = { index + 1 };
+    return result;
+  }
+
+  static const char* AllocationIndexToString(int index) {
+    ASSERT(index >= 0 && index < kNumAllocatableRegisters);
+    const char* const names[] = {
+      "xmm1",
+      "xmm2",
+      "xmm3",
+      "xmm4",
+      "xmm5",
+      "xmm6",
+      "xmm7",
+      "xmm8",
+      "xmm9",
+      "xmm10",
+      "xmm11",
+      "xmm12",
+      "xmm13",
+      "xmm14",
+      "xmm15"
+    };
+    return names[index];
+  }
+
+  bool is_valid() const { return 0 <= code_ && code_ < kNumRegisters; }
+  bool is(XMMRegister reg) const { return code_ == reg.code_; }
   int code() const {
     ASSERT(is_valid());
     return code_;
@@ -174,6 +251,10 @@ const XMMRegister xmm12 = { 12 };
 const XMMRegister xmm13 = { 13 };
 const XMMRegister xmm14 = { 14 };
 const XMMRegister xmm15 = { 15 };
+
+
+typedef XMMRegister DoubleRegister;
+
 
 enum Condition {
   // any value < 0 is considered no_condition
@@ -345,7 +426,7 @@ class CpuFeatures : public AllStatic {
  public:
   // Detect features of the target CPU. Set safe defaults if the serializer
   // is enabled (snapshots must be portable).
-  static void Probe();
+  static void Probe(bool portable);
   // Check whether a feature is supported by the target CPU.
   static bool IsSupported(CpuFeature f) {
     if (f == SSE2 && !FLAG_enable_sse2) return false;
@@ -475,6 +556,8 @@ class Assembler : public Malloced {
   // The debug break slot must be able to contain a call instruction.
   static const int kDebugBreakSlotLength = kCallInstructionLength;
 
+  // One byte opcode for test eax,0xXXXXXXXX.
+  static const byte kTestEaxByte = 0xA9;
 
   // ---------------------------------------------------------------------------
   // Code generation
@@ -1046,6 +1129,7 @@ class Assembler : public Malloced {
   void fld1();
   void fldz();
   void fldpi();
+  void fldln2();
 
   void fld_s(const Operand& adr);
   void fld_d(const Operand& adr);
@@ -1100,6 +1184,7 @@ class Assembler : public Malloced {
 
   void fsin();
   void fcos();
+  void fyl2x();
 
   void frndint();
 
@@ -1171,16 +1256,17 @@ class Assembler : public Malloced {
   void RecordDebugBreakSlot();
 
   // Record a comment relocation entry that can be used by a disassembler.
-  // Use --debug_code to enable.
+  // Use --code-comments to enable.
   void RecordComment(const char* msg);
 
-  void RecordPosition(int pos);
-  void RecordStatementPosition(int pos);
-  bool WriteRecordedPositions();
+  // Writes a single word of data in the code stream.
+  // Used for inline tables, e.g., jump-tables.
+  void db(uint8_t data) { UNIMPLEMENTED(); }
+  void dd(uint32_t data);
 
   int pc_offset() const { return static_cast<int>(pc_ - buffer_); }
-  int current_statement_position() const { return current_statement_position_; }
-  int current_position() const { return current_position_; }
+
+  PositionsRecorder* positions_recorder() { return &positions_recorder_; }
 
   // Check if there is less than kGap bytes available in the buffer.
   // If this is the case, we need to grow the buffer before emitting
@@ -1404,11 +1490,8 @@ class Assembler : public Malloced {
   // push-pop elimination
   byte* last_pc_;
 
-  // source position information
-  int current_statement_position_;
-  int current_position_;
-  int written_statement_position_;
-  int written_position_;
+  PositionsRecorder positions_recorder_;
+  friend class PositionsRecorder;
 };
 
 

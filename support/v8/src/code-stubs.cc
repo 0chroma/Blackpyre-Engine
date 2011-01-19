@@ -37,7 +37,6 @@ namespace v8 {
 namespace internal {
 
 bool CodeStub::FindCodeInCache(Code** code_out) {
-  if (has_custom_cache()) return GetCustomCache(code_out);
   int index = Heap::code_stubs()->FindEntry(GetKey());
   if (index != NumberDictionary::kNotFound) {
     *code_out = Code::cast(Heap::code_stubs()->ValueAt(index));
@@ -50,8 +49,10 @@ bool CodeStub::FindCodeInCache(Code** code_out) {
 void CodeStub::GenerateCode(MacroAssembler* masm) {
   // Update the static counter each time a new code stub is generated.
   Counters::code_stubs.Increment();
+
   // Nested stubs are not allowed for leafs.
-  masm->set_allow_stub_calls(AllowsStubCalls());
+  AllowStubCallsScope allow_scope(masm, AllowsStubCalls());
+
   // Generate the code for the stub.
   masm->set_generating_stub(true);
   Generate(masm);
@@ -104,18 +105,16 @@ Handle<Code> CodeStub::GetCode() {
         GetICState());
     Handle<Code> new_object = Factory::NewCode(desc, flags, masm.CodeObject());
     RecordCodeGeneration(*new_object, &masm);
+    FinishCode(*new_object);
 
-    if (has_custom_cache()) {
-      SetCustomCache(*new_object);
-    } else {
-      // Update the dictionary and the root in Heap.
-      Handle<NumberDictionary> dict =
-          Factory::DictionaryAtNumberPut(
-              Handle<NumberDictionary>(Heap::code_stubs()),
-              GetKey(),
-              new_object);
-      Heap::public_set_code_stubs(*dict);
-    }
+    // Update the dictionary and the root in Heap.
+    Handle<NumberDictionary> dict =
+        Factory::DictionaryAtNumberPut(
+            Handle<NumberDictionary>(Heap::code_stubs()),
+            GetKey(),
+            new_object);
+    Heap::public_set_code_stubs(*dict);
+
     code = *new_object;
   }
 
@@ -146,16 +145,13 @@ MaybeObject* CodeStub::TryGetCode() {
     }
     code = Code::cast(new_object);
     RecordCodeGeneration(code, &masm);
+    FinishCode(code);
 
-    if (has_custom_cache()) {
-      SetCustomCache(code);
-    } else {
-      // Try to update the code cache but do not fail if unable.
-      MaybeObject* maybe_new_object =
-          Heap::code_stubs()->AtNumberPut(GetKey(), code);
-      if (maybe_new_object->ToObject(&new_object)) {
-        Heap::public_set_code_stubs(NumberDictionary::cast(new_object));
-      }
+    // Try to update the code cache but do not fail if unable.
+    MaybeObject* maybe_new_object =
+        Heap::code_stubs()->AtNumberPut(GetKey(), code);
+    if (maybe_new_object->ToObject(&new_object)) {
+      Heap::public_set_code_stubs(NumberDictionary::cast(new_object));
     }
   }
 
@@ -175,6 +171,61 @@ const char* CodeStub::MajorName(CodeStub::Major major_key,
       }
       return NULL;
   }
+}
+
+
+int ICCompareStub::MinorKey() {
+  return OpField::encode(op_ - Token::EQ) | StateField::encode(state_);
+}
+
+
+void ICCompareStub::Generate(MacroAssembler* masm) {
+  switch (state_) {
+    case CompareIC::UNINITIALIZED:
+      GenerateMiss(masm);
+      break;
+    case CompareIC::SMIS:
+      GenerateSmis(masm);
+      break;
+    case CompareIC::HEAP_NUMBERS:
+      GenerateHeapNumbers(masm);
+      break;
+    case CompareIC::OBJECTS:
+      GenerateObjects(masm);
+      break;
+    default:
+      UNREACHABLE();
+  }
+}
+
+
+const char* InstanceofStub::GetName() {
+  if (name_ != NULL) return name_;
+  const int kMaxNameLength = 100;
+  name_ = Bootstrapper::AllocateAutoDeletedArray(kMaxNameLength);
+  if (name_ == NULL) return "OOM";
+
+  const char* args = "";
+  if (HasArgsInRegisters()) {
+    args = "_REGS";
+  }
+
+  const char* inline_check = "";
+  if (HasCallSiteInlineCheck()) {
+    inline_check = "_INLINE";
+  }
+
+  const char* return_true_false_object = "";
+  if (ReturnTrueFalseObject()) {
+    return_true_false_object = "_TRUEFALSE";
+  }
+
+  OS::SNPrintF(Vector<char>(name_, kMaxNameLength),
+               "InstanceofStub%s%s%s",
+               args,
+               inline_check,
+               return_true_false_object);
+  return name_;
 }
 
 

@@ -1,0 +1,9 @@
+#!/bin/bash
+# ^^^^ toc needs a Genuine Bash, not some cheap work-alike!!!
+
+. ./find_toc2.sh || exit
+
+export PACKAGE_NAME=libv8-juice
+export PACKAGE_VERSION=20101126
+. ${TOC2_HOME}/sbin/toc2_bootstrap.sh "$@"
+# post-configure processing can be done in postconfig.${PACKAGE_NAME}

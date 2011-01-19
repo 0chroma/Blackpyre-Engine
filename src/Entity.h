@@ -16,14 +16,16 @@
 #else
 #include <GL/gl.h>
 #endif
+#include <string>
+
 
 class Entity : public GameObject{
     public:
-        Entity(float x, float y, float sx, float sy, float a, const char *sprite);
+        Entity(float x, float y, float sx, float sy, float a, std::string sprite);
         ~Entity();
 
         GLuint texture;
-        const char *sprite;
+        std::string sprite;
 
         void render();
         void update();

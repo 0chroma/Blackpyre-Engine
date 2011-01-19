@@ -1,4 +1,4 @@
-// Copyright 2009 the V8 project authors. All rights reserved.
+// Copyright 2010 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -44,10 +44,10 @@ uint64_t CpuFeatures::supported_ = kDefaultCpuFeatures;
 uint64_t CpuFeatures::enabled_ = 0;
 uint64_t CpuFeatures::found_by_runtime_probing_ = 0;
 
-void CpuFeatures::Probe()  {
+void CpuFeatures::Probe(bool portable)  {
   ASSERT(Heap::HasBeenSetup());
-  ASSERT(supported_ == kDefaultCpuFeatures);
-  if (Serializer::enabled()) {
+  supported_ = kDefaultCpuFeatures;
+  if (portable && Serializer::enabled()) {
     supported_ |= OS::CpuFeaturesImpliedByPlatform();
     return;  // No features if we might serialize.
   }
@@ -74,7 +74,7 @@ void CpuFeatures::Probe()  {
   __ xor_(rax, rdx);  // Different if CPUID is supported.
   __ j(not_zero, &cpuid);
 
-  // CPUID not supported. Clear the supported features in edx:eax.
+  // CPUID not supported. Clear the supported features in rax.
   __ xor_(rax, rax);
   __ jmp(&done);
 
@@ -133,7 +133,7 @@ void CpuFeatures::Probe()  {
   found_by_runtime_probing_ &= ~kDefaultCpuFeatures;
   uint64_t os_guarantees = OS::CpuFeaturesImpliedByPlatform();
   supported_ |= os_guarantees;
-  found_by_runtime_probing_ &= ~os_guarantees;
+  found_by_runtime_probing_ &= portable ? ~os_guarantees : 0;
   // SSE2 and CMOV must be available on an X64 CPU.
   ASSERT(IsSupported(CPUID));
   ASSERT(IsSupported(SSE2));
@@ -185,6 +185,20 @@ void RelocInfo::PatchCode(byte* instructions, int instruction_count) {
   // Indicate that code has changed.
   CPU::FlushICache(pc_, instruction_count);
 }
+
+
+// -----------------------------------------------------------------------------
+// Register constants.
+
+const int Register::registerCodeByAllocationIndex[kNumAllocatableRegisters] = {
+    // rax, rbx, rdx, rcx, rdi, r8, r9, r11, r14, r12
+    0, 3, 2, 1, 7, 8, 9, 11, 14, 12
+};
+
+const int Register::allocationIndexByRegisterCode[kNumRegisters] = {
+    0, 3, 2, 1, -1, -1, -1, 4, 5, 6, -1, 7, 9, -1, 8, -1
+};
+
 
 // -----------------------------------------------------------------------------
 // Implementation of Operand
@@ -296,7 +310,7 @@ static void InitCoverageLog();
 byte* Assembler::spare_buffer_ = NULL;
 
 Assembler::Assembler(void* buffer, int buffer_size)
-    : code_targets_(100) {
+    : code_targets_(100), positions_recorder_(this) {
   if (buffer == NULL) {
     // Do our own buffer management.
     if (buffer_size <= kMinimalBufferSize) {
@@ -337,10 +351,7 @@ Assembler::Assembler(void* buffer, int buffer_size)
   reloc_info_writer.Reposition(buffer_ + buffer_size, pc_);
 
   last_pc_ = NULL;
-  current_statement_position_ = RelocInfo::kNoPosition;
-  current_position_ = RelocInfo::kNoPosition;
-  written_statement_position_ = current_statement_position_;
-  written_position_ = current_position_;
+
 #ifdef GENERATED_CODE_COVERAGE
   InitCoverageLog();
 #endif
@@ -824,6 +835,7 @@ void Assembler::bts(const Operand& dst, Register src) {
 
 
 void Assembler::call(Label* L) {
+  positions_recorder()->WriteRecordedPositions();
   EnsureSpace ensure_space(this);
   last_pc_ = pc_;
   // 1110 1000 #32-bit disp.
@@ -845,7 +857,7 @@ void Assembler::call(Label* L) {
 
 
 void Assembler::call(Handle<Code> target, RelocInfo::Mode rmode) {
-  WriteRecordedPositions();
+  positions_recorder()->WriteRecordedPositions();
   EnsureSpace ensure_space(this);
   last_pc_ = pc_;
   // 1110 1000 #32-bit disp.
@@ -855,6 +867,7 @@ void Assembler::call(Handle<Code> target, RelocInfo::Mode rmode) {
 
 
 void Assembler::call(Register adr) {
+  positions_recorder()->WriteRecordedPositions();
   EnsureSpace ensure_space(this);
   last_pc_ = pc_;
   // Opcode: FF /2 r64.
@@ -865,6 +878,7 @@ void Assembler::call(Register adr) {
 
 
 void Assembler::call(const Operand& op) {
+  positions_recorder()->WriteRecordedPositions();
   EnsureSpace ensure_space(this);
   last_pc_ = pc_;
   // Opcode: FF /2 m64.
@@ -2220,6 +2234,14 @@ void Assembler::fldpi() {
 }
 
 
+void Assembler::fldln2() {
+  EnsureSpace ensure_space(this);
+  last_pc_ = pc_;
+  emit(0xD9);
+  emit(0xED);
+}
+
+
 void Assembler::fld_s(const Operand& adr) {
   EnsureSpace ensure_space(this);
   last_pc_ = pc_;
@@ -2358,6 +2380,14 @@ void Assembler::fsin() {
   last_pc_ = pc_;
   emit(0xD9);
   emit(0xFE);
+}
+
+
+void Assembler::fyl2x() {
+  EnsureSpace ensure_space(this);
+  last_pc_ = pc_;
+  emit(0xD9);
+  emit(0xF1);
 }
 
 
@@ -2920,6 +2950,12 @@ void Assembler::emit_sse_operand(Register dst, XMMRegister src) {
 }
 
 
+void Assembler::dd(uint32_t data) {
+  EnsureSpace ensure_space(this);
+  emitl(data);
+}
+
+
 // Relocation information implementations.
 
 void Assembler::RecordRelocInfo(RelocInfo::Mode rmode, intptr_t data) {
@@ -2935,65 +2971,24 @@ void Assembler::RecordRelocInfo(RelocInfo::Mode rmode, intptr_t data) {
 }
 
 void Assembler::RecordJSReturn() {
-  WriteRecordedPositions();
+  positions_recorder()->WriteRecordedPositions();
   EnsureSpace ensure_space(this);
   RecordRelocInfo(RelocInfo::JS_RETURN);
 }
 
 
 void Assembler::RecordDebugBreakSlot() {
-  WriteRecordedPositions();
+  positions_recorder()->WriteRecordedPositions();
   EnsureSpace ensure_space(this);
   RecordRelocInfo(RelocInfo::DEBUG_BREAK_SLOT);
 }
 
 
 void Assembler::RecordComment(const char* msg) {
-  if (FLAG_debug_code) {
+  if (FLAG_code_comments) {
     EnsureSpace ensure_space(this);
     RecordRelocInfo(RelocInfo::COMMENT, reinterpret_cast<intptr_t>(msg));
   }
-}
-
-
-void Assembler::RecordPosition(int pos) {
-  ASSERT(pos != RelocInfo::kNoPosition);
-  ASSERT(pos >= 0);
-  current_position_ = pos;
-}
-
-
-void Assembler::RecordStatementPosition(int pos) {
-  ASSERT(pos != RelocInfo::kNoPosition);
-  ASSERT(pos >= 0);
-  current_statement_position_ = pos;
-}
-
-
-bool Assembler::WriteRecordedPositions() {
-  bool written = false;
-
-  // Write the statement position if it is different from what was written last
-  // time.
-  if (current_statement_position_ != written_statement_position_) {
-    EnsureSpace ensure_space(this);
-    RecordRelocInfo(RelocInfo::STATEMENT_POSITION, current_statement_position_);
-    written_statement_position_ = current_statement_position_;
-    written = true;
-  }
-
-  // Write the position if it is different from what was written last time and
-  // also different from the written statement position.
-  if (current_position_ != written_position_ &&
-      current_position_ != written_statement_position_) {
-    EnsureSpace ensure_space(this);
-    RecordRelocInfo(RelocInfo::POSITION, current_position_);
-    written_position_ = current_position_;
-    written = true;
-  }
-
-  // Return whether something was written.
-  return written;
 }
 
 

@@ -77,7 +77,7 @@ class GenericBinaryOpStub : public CodeStub {
         rhs_(rhs),
         constant_rhs_(constant_rhs),
         specialized_on_rhs_(RhsIsOneWeWantToOptimizeFor(op, constant_rhs)),
-        runtime_operands_type_(BinaryOpIC::DEFAULT),
+        runtime_operands_type_(BinaryOpIC::UNINIT_OR_SMI),
         name_(NULL) { }
 
   GenericBinaryOpStub(int key, BinaryOpIC::TypeInfo type_info)
@@ -106,9 +106,9 @@ class GenericBinaryOpStub : public CodeStub {
   // Minor key encoding in 17 bits.
   class ModeBits: public BitField<OverwriteMode, 0, 2> {};
   class OpBits: public BitField<Token::Value, 2, 6> {};
-  class TypeInfoBits: public BitField<int, 8, 2> {};
-  class RegisterBits: public BitField<bool, 10, 1> {};
-  class KnownIntBits: public BitField<int, 11, kKnownRhsKeyBits> {};
+  class TypeInfoBits: public BitField<int, 8, 3> {};
+  class RegisterBits: public BitField<bool, 11, 1> {};
+  class KnownIntBits: public BitField<int, 12, kKnownRhsKeyBits> {};
 
   Major MajorKey() { return GenericBinaryOp; }
   int MinorKey() {
@@ -178,6 +178,10 @@ class GenericBinaryOpStub : public CodeStub {
     return lhs_is_r0 ? r1 : r0;
   }
 
+  bool HasSmiSmiFastPath() {
+    return op_ != Token::DIV;
+  }
+
   bool ShouldGenerateSmiCode() {
     return ((op_ != Token::DIV && op_ != Token::MOD) || specialized_on_rhs_) &&
         runtime_operands_type_ != BinaryOpIC::HEAP_NUMBERS &&
@@ -195,6 +199,10 @@ class GenericBinaryOpStub : public CodeStub {
   }
 
   const char* GetName();
+
+  virtual void FinishCode(Code* code) {
+    code->set_binary_op_type(runtime_operands_type_);
+  }
 
 #ifdef DEBUG
   void Print() {
@@ -430,43 +438,6 @@ class NumberToStringStub: public CodeStub {
   void Generate(MacroAssembler* masm);
 
   const char* GetName() { return "NumberToStringStub"; }
-};
-
-
-class RecordWriteStub : public CodeStub {
- public:
-  RecordWriteStub(Register object, Register offset, Register scratch)
-      : object_(object), offset_(offset), scratch_(scratch) { }
-
-  void Generate(MacroAssembler* masm);
-
- private:
-  Register object_;
-  Register offset_;
-  Register scratch_;
-
-  // Minor key encoding in 12 bits. 4 bits for each of the three
-  // registers (object, offset and scratch) OOOOAAAASSSS.
-  class ScratchBits: public BitField<uint32_t, 0, 4> {};
-  class OffsetBits: public BitField<uint32_t, 4, 4> {};
-  class ObjectBits: public BitField<uint32_t, 8, 4> {};
-
-  Major MajorKey() { return RecordWrite; }
-
-  int MinorKey() {
-    // Encode the registers.
-    return ObjectBits::encode(object_.code()) |
-           OffsetBits::encode(offset_.code()) |
-           ScratchBits::encode(scratch_.code());
-  }
-
-#ifdef DEBUG
-  void Print() {
-    PrintF("RecordWriteStub (object reg %d), (offset reg %d),"
-           " (scratch reg %d)\n",
-           object_.code(), offset_.code(), scratch_.code());
-  }
-#endif
 };
 
 

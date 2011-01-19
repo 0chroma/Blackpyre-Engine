@@ -32,6 +32,7 @@
 #include "ast.h"
 #include "scanner.h"
 #include "scopes.h"
+#include "preparse-data.h"
 
 namespace v8 {
 namespace internal {
@@ -123,32 +124,15 @@ class ScriptDataImpl : public ScriptData {
   Vector<const char*> BuildArgs();
 
   int symbol_count() {
-    return (store_.length() > kHeaderSize) ? store_[kSymbolCountOffset] : 0;
+    return (store_.length() > PreparseDataConstants::kHeaderSize)
+        ? store_[PreparseDataConstants::kSymbolCountOffset]
+        : 0;
   }
   // The following functions should only be called if SanityCheck has
   // returned true.
-  bool has_error() { return store_[kHasErrorOffset]; }
-  unsigned magic() { return store_[kMagicOffset]; }
-  unsigned version() { return store_[kVersionOffset]; }
-
-  static const unsigned kMagicNumber = 0xBadDead;
-  static const unsigned kCurrentVersion = 4;
-
-  static const int kMagicOffset = 0;
-  static const int kVersionOffset = 1;
-  static const int kHasErrorOffset = 2;
-  static const int kFunctionsSizeOffset = 3;
-  static const int kSymbolCountOffset = 4;
-  static const int kSizeOffset = 5;
-  static const int kHeaderSize = 6;
-
-  // If encoding a message, the following positions are fixed.
-  static const int kMessageStartPos = 0;
-  static const int kMessageEndPos = 1;
-  static const int kMessageArgCountPos = 2;
-  static const int kMessageTextPos = 3;
-
-  static const byte kNumberTerminator = 0x80u;
+  bool has_error() { return store_[PreparseDataConstants::kHasErrorOffset]; }
+  unsigned magic() { return store_[PreparseDataConstants::kMagicOffset]; }
+  unsigned version() { return store_[PreparseDataConstants::kVersionOffset]; }
 
  private:
   Vector<unsigned> store_;
@@ -177,125 +161,6 @@ class ScriptDataImpl : public ScriptData {
 };
 
 
-// Record only functions.
-class PartialParserRecorder {
- public:
-  PartialParserRecorder();
-
-  void LogFunction(int start, int end, int literals, int properties) {
-    function_store_.Add(start);
-    function_store_.Add(end);
-    function_store_.Add(literals);
-    function_store_.Add(properties);
-  }
-
-  void LogSymbol(int start, const char* symbol, int length) { }
-
-  // Logs an error message and marks the log as containing an error.
-  // Further logging will be ignored, and ExtractData will return a vector
-  // representing the error only.
-  void LogMessage(int start,
-                  int end,
-                  const char* message,
-                  const char* argument_opt) {
-    Scanner::Location location(start, end);
-    Vector<const char*> arguments;
-    if (argument_opt != NULL) {
-      arguments = Vector<const char*>(&argument_opt, 1);
-    }
-    this->LogMessage(location, message, arguments);
-  }
-
-  int function_position() { return function_store_.size(); }
-
-  void LogMessage(Scanner::Location loc,
-                  const char* message,
-                  Vector<const char*> args);
-
-  Vector<unsigned> ExtractData();
-
-  void PauseRecording() {
-    pause_count_++;
-    is_recording_ = false;
-  }
-
-  void ResumeRecording() {
-    ASSERT(pause_count_ > 0);
-    if (--pause_count_ == 0) is_recording_ = !has_error();
-  }
-
-  int symbol_position() { return 0; }
-  int symbol_ids() { return 0; }
-
- protected:
-  bool has_error() {
-    return static_cast<bool>(preamble_[ScriptDataImpl::kHasErrorOffset]);
-  }
-
-  bool is_recording() {
-    return is_recording_;
-  }
-
-  void WriteString(Vector<const char> str);
-
-  Collector<unsigned> function_store_;
-  unsigned preamble_[ScriptDataImpl::kHeaderSize];
-  bool is_recording_;
-  int pause_count_;
-
-#ifdef DEBUG
-  int prev_start_;
-#endif
-};
-
-
-// Record both functions and symbols.
-class CompleteParserRecorder: public PartialParserRecorder {
- public:
-  CompleteParserRecorder();
-
-  void LogSymbol(int start, Vector<const char> literal);
-
-  void LogSymbol(int start, const char* symbol, int length) {
-    LogSymbol(start, Vector<const char>(symbol, length));
-  }
-
-  Vector<unsigned> ExtractData();
-
-  int symbol_position() { return symbol_store_.size(); }
-  int symbol_ids() { return symbol_id_; }
-
- private:
-  static int vector_hash(Vector<const char> string) {
-    int hash = 0;
-    for (int i = 0; i < string.length(); i++) {
-      int c = string[i];
-      hash += c;
-      hash += (hash << 10);
-      hash ^= (hash >> 6);
-    }
-    return hash;
-  }
-
-  static bool vector_compare(void* a, void* b) {
-    Vector<const char>* string1 = reinterpret_cast<Vector<const char>* >(a);
-    Vector<const char>* string2 = reinterpret_cast<Vector<const char>* >(b);
-    int length = string1->length();
-    if (string2->length() != length) return false;
-    return memcmp(string1->start(), string2->start(), length) == 0;
-  }
-
-  // Write a non-negative number to the symbol store.
-  void WriteNumber(int number);
-
-  Collector<byte> symbol_store_;
-  Collector<Vector<const char> > symbol_entries_;
-  HashMap symbol_table_;
-  int symbol_id_;
-};
-
-
-
 class ParserApi {
  public:
   // Parses the source code represented by the compilation info and sets its
@@ -304,14 +169,12 @@ class ParserApi {
   static bool Parse(CompilationInfo* info);
 
   // Generic preparser generating full preparse data.
-  static ScriptDataImpl* PreParse(Handle<String> source,
-                                  unibrow::CharacterStream* stream,
+  static ScriptDataImpl* PreParse(UC16CharacterStream* source,
                                   v8::Extension* extension);
 
   // Preparser that only does preprocessing that makes sense if only used
   // immediately after.
-  static ScriptDataImpl* PartialPreParse(Handle<String> source,
-                                         unibrow::CharacterStream* stream,
+  static ScriptDataImpl* PartialPreParse(UC16CharacterStream* source,
                                          v8::Extension* extension);
 };
 
@@ -458,7 +321,6 @@ class RegExpParser {
   // and sets the value if it is.
   bool ParseHexEscape(int length, uc32* value);
 
-  uc32 ParseControlLetterEscape();
   uc32 ParseOctalLiteral();
 
   // Tries to parse the input as a back reference.  If successful it
@@ -568,12 +430,23 @@ class Parser {
   void ReportMessageAt(Scanner::Location loc,
                        const char* message,
                        Vector<const char*> args);
+  void ReportMessageAt(Scanner::Location loc,
+                       const char* message,
+                       Vector<Handle<String> > args);
 
  protected:
+  FunctionLiteral* ParseLazy(Handle<SharedFunctionInfo> info,
+                             UC16CharacterStream* source,
+                             ZoneScope* zone_scope);
   enum Mode {
     PARSE_LAZILY,
     PARSE_EAGERLY
   };
+
+  // Called by ParseProgram after setting up the scanner.
+  FunctionLiteral* DoParseProgram(Handle<String> source,
+                                  bool in_global_context,
+                                  ZoneScope* zone_scope);
 
   // Report syntax error
   void ReportUnexpectedToken(Token::Value token);
@@ -581,7 +454,7 @@ class Parser {
   void ReportMessage(const char* message, Vector<const char*> args);
 
   bool inside_with() const { return with_nesting_level_ > 0; }
-  Scanner& scanner()  { return scanner_; }
+  V8JavaScriptScanner& scanner()  { return scanner_; }
   Mode mode() const { return mode_; }
   ScriptDataImpl* pre_data() const { return pre_data_; }
 
@@ -681,12 +554,51 @@ class Parser {
   // Magical syntax support.
   Expression* ParseV8Intrinsic(bool* ok);
 
-  INLINE(Token::Value peek()) { return scanner_.peek(); }
-  INLINE(Token::Value Next()) { return scanner_.Next(); }
+  INLINE(Token::Value peek()) {
+    if (stack_overflow_) return Token::ILLEGAL;
+    return scanner().peek();
+  }
+
+  INLINE(Token::Value Next()) {
+    // BUG 1215673: Find a thread safe way to set a stack limit in
+    // pre-parse mode. Otherwise, we cannot safely pre-parse from other
+    // threads.
+    if (stack_overflow_) {
+      return Token::ILLEGAL;
+    }
+    if (StackLimitCheck().HasOverflowed()) {
+      // Any further calls to Next or peek will return the illegal token.
+      // The current call must return the next token, which might already
+      // have been peek'ed.
+      stack_overflow_ = true;
+    }
+    return scanner().Next();
+  }
+
   INLINE(void Consume(Token::Value token));
   void Expect(Token::Value token, bool* ok);
   bool Check(Token::Value token);
   void ExpectSemicolon(bool* ok);
+
+  Handle<String> LiteralString(PretenureFlag tenured) {
+    if (scanner().is_literal_ascii()) {
+      return Factory::NewStringFromAscii(scanner().literal_ascii_string(),
+                                         tenured);
+    } else {
+      return Factory::NewStringFromTwoByte(scanner().literal_uc16_string(),
+                                           tenured);
+    }
+  }
+
+  Handle<String> NextLiteralString(PretenureFlag tenured) {
+    if (scanner().is_next_literal_ascii()) {
+      return Factory::NewStringFromAscii(scanner().next_literal_ascii_string(),
+                                         tenured);
+    } else {
+      return Factory::NewStringFromTwoByte(scanner().next_literal_uc16_string(),
+                                           tenured);
+    }
+  }
 
   Handle<String> GetSymbol(bool* ok);
 
@@ -722,11 +634,9 @@ class Parser {
 
   Scope* NewScope(Scope* parent, Scope::Type type, bool inside_with);
 
-  Handle<String> LookupSymbol(int symbol_id,
-                              Vector<const char> string);
+  Handle<String> LookupSymbol(int symbol_id);
 
-  Handle<String> LookupCachedSymbol(int symbol_id,
-                                    Vector<const char> string);
+  Handle<String> LookupCachedSymbol(int symbol_id);
 
   Expression* NewCall(Expression* expression,
                       ZoneList<Expression*>* arguments,
@@ -760,7 +670,7 @@ class Parser {
   ZoneList<Handle<String> > symbol_cache_;
 
   Handle<Script> script_;
-  Scanner scanner_;
+  V8JavaScriptScanner scanner_;
 
   Scope* top_scope_;
   int with_nesting_level_;
@@ -774,6 +684,12 @@ class Parser {
   bool is_pre_parsing_;
   ScriptDataImpl* pre_data_;
   FuncNameInferrer* fni_;
+  bool stack_overflow_;
+  // If true, the next (and immediately following) function literal is
+  // preceded by a parenthesis.
+  // Heuristically that means that the function will be called immediately,
+  // so never lazily compile it.
+  bool parenthesized_function_;
 };
 
 
@@ -819,7 +735,14 @@ class JsonParser BASE_EMBEDDED {
   // Parse JSON input as a single JSON value.
   // Returns null handle and sets exception if parsing failed.
   static Handle<Object> Parse(Handle<String> source) {
-    return JsonParser().ParseJson(source);
+    if (source->IsExternalTwoByteString()) {
+      ExternalTwoByteStringUC16CharacterStream stream(
+          Handle<ExternalTwoByteString>::cast(source), 0, source->length());
+      return JsonParser().ParseJson(source, &stream);
+    } else {
+      GenericStringUC16CharacterStream stream(source, 0, source->length());
+      return JsonParser().ParseJson(source, &stream);
+    }
   }
 
  private:
@@ -827,7 +750,7 @@ class JsonParser BASE_EMBEDDED {
   ~JsonParser() { }
 
   // Parse a string containing a single JSON value.
-  Handle<Object> ParseJson(Handle<String>);
+  Handle<Object> ParseJson(Handle<String> script, UC16CharacterStream* source);
   // Parse a single JSON value from input (grammar production JSONValue).
   // A JSON value is either a (double-quoted) string literal, a number literal,
   // one of "true", "false", or "null", or an object or array literal.
@@ -852,7 +775,8 @@ class JsonParser BASE_EMBEDDED {
   // Converts the currently parsed literal to a JavaScript String.
   Handle<String> GetString();
 
-  Scanner scanner_;
+  JsonScanner scanner_;
+  bool stack_overflow_;
 };
 } }  // namespace v8::internal
 

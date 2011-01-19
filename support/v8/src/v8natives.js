@@ -83,7 +83,7 @@ function GlobalIsNaN(number) {
 
 // ECMA 262 - 15.1.5
 function GlobalIsFinite(number) {
-  if (!IS_NUMBER(number)) number = ToNumber(number);
+  if (!IS_NUMBER(number)) number = NonNumberToNumber(number);
 
   // NaN - NaN == NaN, Infinity - Infinity == NaN, -Infinity - -Infinity == NaN.
   return %_IsSmi(number) || number - number == 0;
@@ -563,7 +563,7 @@ function DefineOwnProperty(obj, p, desc, should_throw) {
     }
 
     // Step 7
-    if (desc.isConfigurable() ||  desc.isEnumerable() != current.isEnumerable())
+    if (desc.isConfigurable() || desc.isEnumerable() != current.isEnumerable())
       throw MakeTypeError("redefine_disallowed", ["defineProperty"]);
     // Step 9
     if (IsDataDescriptor(current) != IsDataDescriptor(desc))
@@ -615,12 +615,20 @@ function DefineOwnProperty(obj, p, desc, should_throw) {
     } else {
       flag |= READ_ONLY;
     }
-    %DefineOrRedefineDataProperty(obj, p, desc.getValue(), flag);
+    var value = void 0;  // Default value is undefined.
+    if (desc.hasValue()) {
+      value = desc.getValue();
+    } else if (!IS_UNDEFINED(current)) {
+      value = current.getValue();
+    }
+    %DefineOrRedefineDataProperty(obj, p, value, flag);
   } else {
-    if (desc.hasGetter() && IS_FUNCTION(desc.getGet())) {
+    if (desc.hasGetter() &&
+        (IS_FUNCTION(desc.getGet()) || IS_UNDEFINED(desc.getGet()))) {
        %DefineOrRedefineAccessorProperty(obj, p, GETTER, desc.getGet(), flag);
     }
-    if (desc.hasSetter() && IS_FUNCTION(desc.getSet())) {
+    if (desc.hasSetter() &&
+        (IS_FUNCTION(desc.getSet()) || IS_UNDEFINED(desc.getSet()))) {
       %DefineOrRedefineAccessorProperty(obj, p, SETTER, desc.getSet(), flag);
     }
   }
@@ -888,9 +896,14 @@ SetupObject();
 function BooleanToString() {
   // NOTE: Both Boolean objects and values can enter here as
   // 'this'. This is not as dictated by ECMA-262.
-  if (!IS_BOOLEAN(this) && !IS_BOOLEAN_WRAPPER(this))
-    throw new $TypeError('Boolean.prototype.toString is not generic');
-  return ToString(%_ValueOf(this));
+  var b = this;
+  if (!IS_BOOLEAN(b)) {
+    if (!IS_BOOLEAN_WRAPPER(b)) {
+      throw new $TypeError('Boolean.prototype.toString is not generic');
+    }
+    b = %_ValueOf(b);
+  }
+  return b ? 'true' : 'false';
 }
 
 
@@ -903,19 +916,13 @@ function BooleanValueOf() {
 }
 
 
-function BooleanToJSON(key) {
-  return CheckJSONPrimitive(this.valueOf());
-}
-
-
 // ----------------------------------------------------------------------------
 
 
 function SetupBoolean() {
   InstallFunctions($Boolean.prototype, DONT_ENUM, $Array(
     "toString", BooleanToString,
-    "valueOf", BooleanValueOf,
-    "toJSON", BooleanToJSON
+    "valueOf", BooleanValueOf
   ));
 }
 
@@ -949,7 +956,7 @@ function NumberToString(radix) {
   }
   // Fast case: Convert number in radix 10.
   if (IS_UNDEFINED(radix) || radix === 10) {
-    return ToString(number);
+    return %_NumberToString(number);
   }
 
   // Convert the radix to an integer and check the range.
@@ -1015,18 +1022,6 @@ function NumberToPrecision(precision) {
 }
 
 
-function CheckJSONPrimitive(val) {
-  if (!IsPrimitive(val))
-    throw MakeTypeError('result_not_primitive', ['toJSON', val]);
-  return val;
-}
-
-
-function NumberToJSON(key) {
-  return CheckJSONPrimitive(this.valueOf());
-}
-
-
 // ----------------------------------------------------------------------------
 
 function SetupNumber() {
@@ -1067,13 +1062,11 @@ function SetupNumber() {
     "valueOf", NumberValueOf,
     "toFixed", NumberToFixed,
     "toExponential", NumberToExponential,
-    "toPrecision", NumberToPrecision,
-    "toJSON", NumberToJSON
+    "toPrecision", NumberToPrecision
   ));
 }
 
 SetupNumber();
-
 
 
 // ----------------------------------------------------------------------------
@@ -1162,11 +1155,8 @@ function NewFunction(arg1) {  // length == 1
   var p = '';
   if (n > 1) {
     p = new $Array(n - 1);
-    // Explicitly convert all parameters to strings.
-    // Array.prototype.join replaces null with empty strings which is
-    // not appropriate.
-    for (var i = 0; i < n - 1; i++) p[i] = ToString(%_Arguments(i));
-    p = p.join(',');
+    for (var i = 0; i < n - 1; i++) p[i] = %_Arguments(i);
+    p = Join(p, n - 1, ',', NonStringToString);
     // If the formal parameters string include ) - an illegal
     // character - it may make the combined function expression
     // compile. We avoid this problem by checking for this early on.

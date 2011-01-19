@@ -1,0 +1,165 @@
+#!/do/not/bash
+#^^^ this helps emacs out, so it'll start in shell-script-mode.
+# This is the main configure script code for the source tree.  This
+# file will be sourced by the configure script, and is not intended to
+# be run directly.
+
+toc2_add_config PACKAGE_RELEASE_CODENAME="Approved by Me"
+toc2_add_config PACKAGE_URL="http://code.google.com/p/v8-juice"
+toc2_export PACKAGE_VERSION_HEX="$PACKAGE_VERSION_HEX"
+toc2_export PACKAGE_DESCRIPTION="Add-ons for the Google v8 JavaScript engine"
+toc2_export V8JUICE_VERSION_DOTTED=$(echo ${PACKAGE_VERSION} | perl -pe 's|(\d\d\d\d)(\d\d)(\d\d)|$1.$2.$3|')
+
+toc2_export v8_juice_CONFIG_PURE_ISO=${pure_iso-0}
+
+toc2_test user_is_stephan_beal
+# ^^^ don't ask. Must come before gnu_cpp_tools test.
+
+toc2_test_require gnu_cpp_tools
+
+echo "Looking for libv8 headers and libraries..."
+
+########################################################################
+# Look for v8.h and libv8*.{a,so}
+v8home="${v8_prefix-${prefix}}"
+v8incpath="${v8home}/include:${v8home}/include/v8:${prefix}/include:${prefix}/include/v8:/usr/include:/usr/include/v8:/usr/local/include:/usr/local/include/v8"
+toc2_test find_header v8.h ${v8incpath} || {
+    toc2_boldecho "Could not find v8.h any of these paths:"
+    echo -ne '\t'
+    echo ${v8incpath} | sed -e 's/:/\n\t/g'
+    echo "Try passing --v8-prefix=/prefix/of/v8/installation" 
+    toc2_die 127 "Missing required v8.h ${TOC2_EMOTICON_GRIEF}"
+}
+toc2_export V8_HOME="$(dirname $(dirname ${TOC2_FIND_RESULT}))"
+v8h="${TOC2_FIND_RESULT}"
+v8incdir="$(dirname ${v8h})"
+v8cppflags="-I${v8incdir}"
+echo "Using v8 CPPFLAGS: ${v8cppflags}"
+#echo V8_HOME=${V8_HOME}
+#v8home="${V8_HOME}"
+
+echo "Searching for v8 library:"
+default_libpath="${prefix}/lib:/usr/lib:/usr/local/lib:$HOME/lib"
+v8libpath="${v8home}/lib:${default_libpath}"
+
+if [[ x0 != x${configure_enable_debug-0} ]]; then
+    echo "Debuggering enabled. Preferring libv8_g over libv8."
+    liblist="libv8_g.a libv8_g.so libv8.a libv8.so"
+else
+    echo "Debuggering not enabled. Preferring libv8 over libv8_g."
+    liblist="libv8.a libv8.so libv8_g.a libv8_g.so"
+fi
+for lib in $liblist; do
+
+        echo "Looking for ${lib}"
+    toc2_find_in_path ${lib} ${v8libpath} && break
+done
+v8lib=${TOC2_FIND_RESULT}
+if [[ x = "x${v8lib}" ]]; then
+    toc2_boldecho "Could not find libv8 any of these paths:"
+    echo -ne '\t'
+    echo ${v8libpath} | sed -e 's/:/\n\t/g'
+    toc2_die 127 "Missing required v8 library ${TOC2_EMOTICON_GRIEF}"
+fi
+echo "Found v8 lib: ${v8lib}"
+v8libpath=$(dirname ${v8lib})
+v8ldflags="-L${v8libpath} -l$(echo ${v8lib} | sed -e 's/.*libv8/v8/;s/\..*//') -lpthread"
+echo "Using v8 link flags: ${v8ldflags}"
+
+toc2_export V8_CPPFLAGS="${v8cppflags}"
+toc2_export V8_LDFLAGS="${v8ldflags}"
+
+########################################################################
+# older mess from libs11n source tree...
+if [[ x0 = "x${v8_juice_CONFIG_PURE_ISO}" ]]; then
+    configure_enable_plugins=${configure_enable_plugins-1}
+    if test x0 != "x${configure_enable_plugins-1}"; then
+	toc2_test libdl || toc2_test libltdl
+	if test x = "x${LDADD_DL}"; then
+	    toc2_boldecho "Plugins support is being disabled. No DLL loader found."
+	    toc2_export v8_juice_CONFIG_ENABLE_PLUGINS=0
+	else
+	    toc2_export v8_juice_CONFIG_ENABLE_PLUGINS=1
+	    toc2_boldecho "Plugins support enabled. Disable with --disable-plugins."
+	fi
+    else
+	toc2_boldecho "Plugins support explicitely disabled."
+	toc2_export v8_juice_CONFIG_ENABLE_PLUGINS=0
+    fi
+else
+    echo "Disabling plugins support."
+    toc2_export v8_juice_CONFIG_ENABLE_PLUGINS=0
+fi
+
+
+############################################################
+# accumulate -I and -L/-l entries here:
+includes_path=
+ldadd="${LDADD_DL}" # LDADD_DL is exported by the ltdl/dl tests
+toc2_export LD_LDFLAGS="${ldadd}"
+############################################################
+
+
+############################################################
+# supplemental libs
+if [[ x1 = "x${v8_juice_CONFIG_ENABLE_PLUGINS}" ]]; then
+    true
+fi
+# end supplemental libs check
+############################################################
+
+toc2_test doxygen
+
+########################################################################
+{ # generate PACKAGE_NAME-config:
+    removeDupes=${TOC2_HOME}/bin/removeDupeArgs
+    export ldadd
+    export includes_path
+    ldadd="$(${removeDupes} ${ldadd})"
+    includes_path="$(${removeDupes} ${includes_path} -I${prefix}/include)"
+    toc2_export INCLUDES="${INCLUDES} ${includes_path}"
+    toc2_export LIBV8JUICE_LDADD="${ldadd}"
+    toc2_test_require PACKAGE_NAME-config \
+        PACKAGE_PREFIX=LIBV8JUICE_ \
+        CLIENT_LDADD="$(${removeDupes} -L${prefix}/lib -lv8-juice)" \
+        CLIENT_INCLUDES="$(${removeDupes} ${includes_path})"
+
+    # import the PACKAGE_NAME-config info to ease life for code under ./src/client/*
+    eval $(./${PACKAGE_NAME}-config --toc2-eval) || {
+	# older toc versions didn't have the --toc-eval feature, or output lines without closing semicolons.
+	echo "Error calling './${PACKAGE_NAME}-config --toc2-eval'. You probably have an out-of-date toc2 tree."
+	toc2_die 1 "Try a newer toc: CVS or http://toc.sf.net"
+    }
+    unset includes_path
+    unset ldadd
+}
+
+
+##### create ${PACKAGE_NAME}.pc pkginfo file:
+PACKAGE_CFLAGS="${LIBV8JUICE_CLIENT_INCLUDES}" \
+    PACKAGE_LDADD="${LIBV8JUICE_CLIENT_LDADD}" \
+    toc2_test_require create_pkg-config_data
+
+###### stuff:
+toc2_export BUILD_USER="$USER"
+toc2_export BUILD_HOST=`hostname`
+toc2_export PACKAGE_EMAIL_ADDRESS=sgbeal@googlemail.com
+toc2_export PACKAGE_URL="http://code.google.com/p/v8-juice"
+toc2_export PACKAGE_LICENSE="New BSD"
+
+##### Kludges to ensure that plugin-config.h gets all the stuff it needs:
+toc2_export HAVE_LIBLTDL=${HAVE_LIBLTDL-0}
+toc2_export HAVE_LIBDL=${HAVE_LIBDL-0}
+toc2_export v8_juice_CONFIG_HAVE_LIBLTDL=${HAVE_LIBLTDL-0}
+toc2_export v8_juice_CONFIG_HAVE_LIBDL=${HAVE_LIBDL-0}
+toc2_export v8_juice_CONFIG_DLL_EXTENSION=".so:.dynlib" # .dynlib is for Darwin systems.
+v8pluginbase="${v8home}/lib/v8/juice"
+toc2_export v8_juice_CONFIG_PLUGINS_PATH=".:${v8pluginbase}/${PACKAGE_VERSION}:${v8pluginbase}"
+toc2_export v8_juice_CONFIG_SCRIPTS_PATH=".:${v8pluginbase}/${PACKAGE_VERSION}/js:${v8pluginbase}/js"
+
+##### close the config-filtered files:
+toc2_test_require atfilter_file src/lib/juice/plugin-config.h.at src/include/v8/juice/plugin-config.h
+toc2_test_require atfilter_file src/lib/juice/juice-config.h.at src/include/v8/juice/juice-config.h
+toc2_test_require toc2_project_makefile
+return 0
+# Now toc2.make will be generated by the top-level configure process.

@@ -66,10 +66,43 @@ namespace internal {
 // such that we use an enum in optimized mode, and the struct in debug
 // mode. This way we get the compile-time error checking in debug mode
 // and best performance in optimized code.
-//
+
 // Core register
 struct Register {
-  bool is_valid() const { return 0 <= code_ && code_ < 16; }
+  static const int kNumRegisters = 16;
+  static const int kNumAllocatableRegisters = 8;
+
+  static int ToAllocationIndex(Register reg) {
+    ASSERT(reg.code() < kNumAllocatableRegisters);
+    return reg.code();
+  }
+
+  static Register FromAllocationIndex(int index) {
+    ASSERT(index >= 0 && index < kNumAllocatableRegisters);
+    return from_code(index);
+  }
+
+  static const char* AllocationIndexToString(int index) {
+    ASSERT(index >= 0 && index < kNumAllocatableRegisters);
+    const char* const names[] = {
+      "r0",
+      "r1",
+      "r2",
+      "r3",
+      "r4",
+      "r5",
+      "r6",
+      "r7",
+    };
+    return names[index];
+  }
+
+  static Register from_code(int code) {
+    Register r = { code };
+    return r;
+  }
+
+  bool is_valid() const { return 0 <= code_ && code_ < kNumRegisters; }
   bool is(Register reg) const { return code_ == reg.code_; }
   int code() const {
     ASSERT(is_valid());
@@ -100,7 +133,7 @@ const Register r5  = {  5 };
 const Register r6  = {  6 };
 const Register r7  = {  7 };
 const Register r8  = {  8 };  // Used as context register.
-const Register r9  = {  9 };
+const Register r9  = {  9 };  // Used as lithium codegen scratch register.
 const Register r10 = { 10 };  // Used as roots register.
 const Register fp  = { 11 };
 const Register ip  = { 12 };
@@ -132,6 +165,51 @@ struct SwVfpRegister {
 
 // Double word VFP register.
 struct DwVfpRegister {
+  // d0 has been excluded from allocation. This is following ia32
+  // where xmm0 is excluded. This should be revisited.
+  // Currently d0 is used as a scratch register.
+  // d1 has also been excluded from allocation to be used as a scratch
+  // register as well.
+  static const int kNumRegisters = 16;
+  static const int kNumAllocatableRegisters = 15;
+
+  static int ToAllocationIndex(DwVfpRegister reg) {
+    ASSERT(reg.code() != 0);
+    return reg.code() - 1;
+  }
+
+  static DwVfpRegister FromAllocationIndex(int index) {
+    ASSERT(index >= 0 && index < kNumAllocatableRegisters);
+    return from_code(index + 1);
+  }
+
+  static const char* AllocationIndexToString(int index) {
+    ASSERT(index >= 0 && index < kNumAllocatableRegisters);
+    const char* const names[] = {
+      "d1",
+      "d2",
+      "d3",
+      "d4",
+      "d5",
+      "d6",
+      "d7",
+      "d8",
+      "d9",
+      "d10",
+      "d11",
+      "d12",
+      "d13",
+      "d14",
+      "d15"
+    };
+    return names[index];
+  }
+
+  static DwVfpRegister from_code(int code) {
+    DwVfpRegister r = { code };
+    return r;
+  }
+
   // Supporting d0 to d15, can be later extended to d31.
   bool is_valid() const { return 0 <= code_ && code_ < 16; }
   bool is(DwVfpRegister reg) const { return code_ == reg.code_; }
@@ -165,6 +243,9 @@ struct DwVfpRegister {
 
   int code_;
 };
+
+
+typedef DwVfpRegister DoubleRegister;
 
 
 // Support for the VFP registers s0 to s31 (d0 to d15).
@@ -219,6 +300,18 @@ const DwVfpRegister d13 = { 13 };
 const DwVfpRegister d14 = { 14 };
 const DwVfpRegister d15 = { 15 };
 
+// VFP FPSCR constants.
+static const uint32_t kVFPNConditionFlagBit = 1 << 31;
+static const uint32_t kVFPZConditionFlagBit = 1 << 30;
+static const uint32_t kVFPCConditionFlagBit = 1 << 29;
+static const uint32_t kVFPVConditionFlagBit = 1 << 28;
+
+static const uint32_t kVFPFlushToZeroMask = 1 << 24;
+
+static const uint32_t kVFPRoundingModeMask = 3 << 22;
+static const uint32_t kVFPRoundToMinusInfinityBits = 2 << 22;
+
+static const uint32_t kVFPExceptionMask = 0xf;
 
 // Coprocessor register
 struct CRegister {
@@ -281,6 +374,9 @@ enum Coprocessor {
 
 // Condition field in instructions.
 enum Condition {
+  // any value < 0 is considered no_condition
+  no_condition  = -1,
+
   eq =  0 << 28,  // Z set            equal.
   ne =  1 << 28,  // Z clear          not equal.
   nz =  1 << 28,  // Z clear          not zero.
@@ -448,6 +544,7 @@ class Operand BASE_EMBEDDED {
   // Return true of this operand fits in one instruction so that no
   // 2-instruction solution with a load into the ip register is necessary.
   bool is_single_instruction() const;
+  bool must_use_constant_pool() const;
 
   inline int32_t immediate() const {
     ASSERT(!rm_.is_valid());
@@ -521,7 +618,7 @@ class CpuFeatures : public AllStatic {
  public:
   // Detect features of the target CPU. Set safe defaults if the serializer
   // is enabled (snapshots must be portable).
-  static void Probe();
+  static void Probe(bool portable);
 
   // Check whether a feature is supported by the target CPU.
   static bool IsSupported(CpuFeature f) {
@@ -1007,26 +1104,37 @@ class Assembler : public Malloced {
   void vmov(const Register dst,
             const SwVfpRegister src,
             const Condition cond = al);
+  enum ConversionMode {
+    FPSCRRounding = 0,
+    RoundToZero = 1
+  };
   void vcvt_f64_s32(const DwVfpRegister dst,
                     const SwVfpRegister src,
+                    ConversionMode mode = RoundToZero,
                     const Condition cond = al);
   void vcvt_f32_s32(const SwVfpRegister dst,
                     const SwVfpRegister src,
+                    ConversionMode mode = RoundToZero,
                     const Condition cond = al);
   void vcvt_f64_u32(const DwVfpRegister dst,
                     const SwVfpRegister src,
+                    ConversionMode mode = RoundToZero,
                     const Condition cond = al);
   void vcvt_s32_f64(const SwVfpRegister dst,
                     const DwVfpRegister src,
+                    ConversionMode mode = RoundToZero,
                     const Condition cond = al);
   void vcvt_u32_f64(const SwVfpRegister dst,
                     const DwVfpRegister src,
+                    ConversionMode mode = RoundToZero,
                     const Condition cond = al);
   void vcvt_f64_f32(const DwVfpRegister dst,
                     const SwVfpRegister src,
+                    ConversionMode mode = RoundToZero,
                     const Condition cond = al);
   void vcvt_f32_f64(const SwVfpRegister dst,
                     const DwVfpRegister src,
+                    ConversionMode mode = RoundToZero,
                     const Condition cond = al);
 
   void vadd(const DwVfpRegister dst,
@@ -1047,20 +1155,35 @@ class Assembler : public Malloced {
             const Condition cond = al);
   void vcmp(const DwVfpRegister src1,
             const DwVfpRegister src2,
-            const SBit s = LeaveCC,
             const Condition cond = al);
   void vcmp(const DwVfpRegister src1,
             const double src2,
-            const SBit s = LeaveCC,
             const Condition cond = al);
   void vmrs(const Register dst,
+            const Condition cond = al);
+  void vmsr(const Register dst,
             const Condition cond = al);
   void vsqrt(const DwVfpRegister dst,
              const DwVfpRegister src,
              const Condition cond = al);
 
   // Pseudo instructions
-  void nop(int type = 0);
+
+  // Different nop operations are used by the code generator to detect certain
+  // states of the generated code.
+  enum NopMarkerTypes {
+    NON_MARKING_NOP = 0,
+    DEBUG_BREAK_NOP,
+    // IC markers.
+    PROPERTY_ACCESS_INLINED,
+    PROPERTY_ACCESS_INLINED_CONTEXT,
+    PROPERTY_ACCESS_INLINED_CONTEXT_DONT_DELETE,
+    // Helper values.
+    LAST_CODE_MARKER,
+    FIRST_IC_MARKER = PROPERTY_ACCESS_INLINED
+  };
+
+  void nop(int type = 0);   // 0 is the default non-marking type.
 
   void push(Register src, Condition cond = al) {
     str(src, MemOperand(sp, 4, NegPreIndex), cond);
@@ -1114,19 +1237,20 @@ class Assembler : public Malloced {
   void RecordDebugBreakSlot();
 
   // Record a comment relocation entry that can be used by a disassembler.
-  // Use --debug_code to enable.
+  // Use --code-comments to enable.
   void RecordComment(const char* msg);
 
-  void RecordPosition(int pos);
-  void RecordStatementPosition(int pos);
-  bool WriteRecordedPositions();
+  // Writes a single byte or word of data in the code stream.  Used for
+  // inline tables, e.g., jump-tables.
+  void db(uint8_t data);
+  void dd(uint32_t data);
 
   int pc_offset() const { return pc_ - buffer_; }
-  int current_position() const { return current_position_; }
-  int current_statement_position() const { return current_statement_position_; }
+
+  PositionsRecorder* positions_recorder() { return &positions_recorder_; }
 
   bool can_peephole_optimize(int instructions) {
-    if (!FLAG_peephole_optimization) return false;
+    if (!allow_peephole_optimization_) return false;
     if (last_bound_pos_ > pc_offset() - instructions * kInstrSize) return false;
     return reloc_info_writer.last_pc() <= pc_ - instructions * kInstrSize;
   }
@@ -1136,7 +1260,6 @@ class Assembler : public Malloced {
   static void instr_at_put(byte* pc, Instr instr) {
     *reinterpret_cast<Instr*>(pc) = instr;
   }
-  static bool IsNop(Instr instr, int type = 0);
   static bool IsBranch(Instr instr);
   static int GetBranchOffset(Instr instr);
   static bool IsLdrRegisterImmediate(Instr instr);
@@ -1153,7 +1276,11 @@ class Assembler : public Malloced {
   static bool IsLdrRegFpOffset(Instr instr);
   static bool IsStrRegFpNegOffset(Instr instr);
   static bool IsLdrRegFpNegOffset(Instr instr);
+  static bool IsLdrPcImmediateOffset(Instr instr);
+  static bool IsNop(Instr instr, int type = NON_MARKING_NOP);
 
+  // Check if is time to emit a constant pool for pending reloc info entries
+  void CheckConstPool(bool force_emit, bool require_jump);
 
  protected:
   int buffer_space() const { return reloc_info_writer.pos() - pc_; }
@@ -1169,9 +1296,6 @@ class Assembler : public Malloced {
 
   // Patch branch instruction at pos to branch to given branch target pos
   void target_at_put(int pos, int target_pos);
-
-  // Check if is time to emit a constant pool for pending reloc info entries
-  void CheckConstPool(bool force_emit, bool require_jump);
 
   // Block the emission of the constant pool before pc_offset
   void BlockConstPoolBefore(int pc_offset) {
@@ -1259,12 +1383,6 @@ class Assembler : public Malloced {
   // The bound position, before this we cannot do instruction elimination.
   int last_bound_pos_;
 
-  // source position information
-  int current_position_;
-  int current_statement_position_;
-  int written_position_;
-  int written_statement_position_;
-
   // Code emission
   inline void CheckBuffer();
   void GrowBuffer();
@@ -1290,7 +1408,21 @@ class Assembler : public Malloced {
   friend class RelocInfo;
   friend class CodePatcher;
   friend class BlockConstPoolScope;
+
+  PositionsRecorder positions_recorder_;
+  bool allow_peephole_optimization_;
+  friend class PositionsRecorder;
+  friend class EnsureSpace;
 };
+
+
+class EnsureSpace BASE_EMBEDDED {
+ public:
+  explicit EnsureSpace(Assembler* assembler) {
+    assembler->CheckBuffer();
+  }
+};
+
 
 } }  // namespace v8::internal
 

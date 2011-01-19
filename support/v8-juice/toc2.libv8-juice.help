@@ -1,0 +1,13 @@
+--v8-prefix=/install/path/to/v8
+	Tells configure to look for v8 under the given dir. It expects
+	to find include/v8.h and lib/libv8(_g).(a|so).
+
+--disable-plugins
+	Explicitly disable building the plugins.
+
+--enable-debug
+	This standard option enables compiler debugging flags but also
+	tells the configure script to prefer libv8_g (the debugging
+	version of v8) over libv8. If it cannot find libv8_g it will
+	try to fall back to libv8.
+

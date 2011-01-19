@@ -105,7 +105,7 @@ class Scope: public ZoneObject {
   static bool Analyze(CompilationInfo* info);
 
   // The scope name is only used for printing/debugging.
-  void SetScopeName(Handle<String> scope_name)  { scope_name_ = scope_name; }
+  void SetScopeName(Handle<String> scope_name) { scope_name_ = scope_name; }
 
   virtual void Initialize(bool inside_with);
 
@@ -156,11 +156,11 @@ class Scope: public ZoneObject {
   // such a variable again if it was added; otherwise this is a no-op.
   void RemoveUnresolved(VariableProxy* var);
 
-  // Creates a new temporary variable in this scope and binds a proxy to it.
-  // The name is only used for printing and cannot be used to find the variable.
-  // In particular, the only way to get hold of the temporary is by keeping the
-  // VariableProxy* around.
-  virtual VariableProxy* NewTemporary(Handle<String> name);
+  // Creates a new temporary variable in this scope.  The name is only used
+  // for printing and cannot be used to find the variable.  In particular,
+  // the only way to get hold of the temporary is by keeping the Variable*
+  // around.
+  virtual Variable* NewTemporary(Handle<String> name);
 
   // Adds the specific declaration node to the list of declarations in
   // this scope. The declarations are processed as part of entering
@@ -188,10 +188,10 @@ class Scope: public ZoneObject {
   // Scope-specific info.
 
   // Inform the scope that the corresponding code contains a with statement.
-  void RecordWithStatement()  { scope_contains_with_ = true; }
+  void RecordWithStatement() { scope_contains_with_ = true; }
 
   // Inform the scope that the corresponding code contains an eval call.
-  void RecordEvalCall()  { scope_calls_eval_ = true; }
+  void RecordEvalCall() { scope_calls_eval_ = true; }
 
 
   // ---------------------------------------------------------------------------
@@ -302,6 +302,14 @@ class Scope: public ZoneObject {
 
   explicit Scope(Type type);
 
+  void InsertAfterScope(Scope* scope) {
+    inner_scopes_.Add(scope);
+    outer_scope_ = scope->outer_scope_;
+    outer_scope_->inner_scopes_.RemoveElement(scope);
+    outer_scope_->inner_scopes_.Add(this);
+    scope->outer_scope_ = this;
+  }
+
   // Scope tree.
   Scope* outer_scope_;  // the immediately enclosing outer scope, or NULL
   ZoneList<Scope*> inner_scopes_;  // the immediately enclosed inner scopes
@@ -355,6 +363,10 @@ class Scope: public ZoneObject {
   int num_stack_slots_;
   int num_heap_slots_;
 
+  // Serialized scopes support.
+  SerializedScopeInfo* scope_info_;
+  bool resolved() { return scope_info_ != NULL; }
+
   // Create a non-local variable with a given name.
   // These variables are looked up dynamically at runtime.
   Variable* NonLocal(Handle<String> name, Variable::Mode mode);
@@ -386,6 +398,33 @@ class Scope: public ZoneObject {
   void AllocateNonParameterLocal(Variable* var);
   void AllocateNonParameterLocals();
   void AllocateVariablesRecursively();
+
+ private:
+  Scope(Scope* inner_scope, SerializedScopeInfo* scope_info);
+
+  void SetDefaults(Type type,
+                   Scope* outer_scope,
+                   SerializedScopeInfo* scope_info) {
+    outer_scope_ = outer_scope;
+    type_ = type;
+    scope_name_ = Factory::empty_symbol();
+    dynamics_ = NULL;
+    receiver_ = NULL;
+    function_ = NULL;
+    arguments_ = NULL;
+    arguments_shadow_ = NULL;
+    illegal_redecl_ = NULL;
+    scope_inside_with_ = false;
+    scope_contains_with_ = false;
+    scope_calls_eval_ = false;
+    outer_scope_calls_eval_ = false;
+    inner_scope_calls_eval_ = false;
+    outer_scope_is_eval_scope_ = false;
+    force_eager_compilation_ = false;
+    num_stack_slots_ = 0;
+    num_heap_slots_ = 0;
+    scope_info_ = scope_info;
+  }
 };
 
 
@@ -423,7 +462,7 @@ class DummyScope : public Scope {
     return NULL;
   }
 
-  virtual VariableProxy* NewTemporary(Handle<String> name)  { return NULL; }
+  virtual Variable* NewTemporary(Handle<String> name)  { return NULL; }
 
   virtual bool HasTrivialOuterContext() const {
     return (nesting_level_ == 0 || inside_with_level_ <= 0);

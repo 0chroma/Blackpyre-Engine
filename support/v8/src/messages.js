@@ -97,6 +97,12 @@ function ToDetailString(obj) {
     var constructorName = constructor.name;
     if (!constructorName) return ToString(obj);
     return "#<" + GetInstanceName(constructorName) + ">";
+  } else if (obj instanceof $Error) {
+    // When formatting internally created error messages, do not
+    // invoke overwritten error toString methods but explicitly use
+    // the error to string method. This is to avoid leaking error
+    // objects between script tags in a browser setting.
+    return %_CallFunction(obj, errorToString);
   } else {
     return ToString(obj);
   }
@@ -190,7 +196,6 @@ function FormatMessage(message) {
       illegal_return:               "Illegal return statement",
       error_loading_debugger:       "Error loading debugger",
       no_input_to_regexp:           "No input to %0",
-      result_not_primitive:         "Result of %0 must be a primitive, was %1",
       invalid_json:                 "String '%0' is not valid JSON",
       circular_structure:           "Converting circular structure to JSON",
       obj_ctor_property_non_object: "Object.%0 called on non-object",
@@ -904,11 +909,12 @@ function FormatStackTrace(error, frames) {
 
 function FormatRawStackTrace(error, raw_stack) {
   var frames = [ ];
-  for (var i = 0; i < raw_stack.length; i += 3) {
+  for (var i = 0; i < raw_stack.length; i += 4) {
     var recv = raw_stack[i];
-    var fun = raw_stack[i+1];
-    var pc = raw_stack[i+2];
-    var pos = %FunctionGetPositionForOffset(fun, pc);
+    var fun = raw_stack[i + 1];
+    var code = raw_stack[i + 2];
+    var pc = raw_stack[i + 3];
+    var pos = %FunctionGetPositionForOffset(code, pc);
     frames.push(new CallSite(recv, fun, pos));
   }
   if (IS_FUNCTION($Error.prepareStackTrace)) {
@@ -943,15 +949,28 @@ function DefineError(f) {
   }
   %FunctionSetInstanceClassName(f, 'Error');
   %SetProperty(f.prototype, 'constructor', f, DONT_ENUM);
-  f.prototype.name = name;
+  // The name property on the prototype of error objects is not
+  // specified as being read-one and dont-delete. However, allowing
+  // overwriting allows leaks of error objects between script blocks
+  // in the same context in a browser setting. Therefore we fix the
+  // name.
+  %SetProperty(f.prototype, "name", name, READ_ONLY | DONT_DELETE);
   %SetCode(f, function(m) {
     if (%_IsConstructCall()) {
+      // Define all the expected properties directly on the error
+      // object. This avoids going through getters and setters defined
+      // on prototype objects.
+      %IgnoreAttributesAndSetProperty(this, 'stack', void 0);
+      %IgnoreAttributesAndSetProperty(this, 'arguments', void 0);
+      %IgnoreAttributesAndSetProperty(this, 'type', void 0);
       if (m === kAddMessageAccessorsMarker) {
+        // DefineOneShotAccessor always inserts a message property and
+        // ignores setters.
         DefineOneShotAccessor(this, 'message', function (obj) {
           return FormatMessage({type: obj.type, args: obj.arguments});
         });
       } else if (!IS_UNDEFINED(m)) {
-        this.message = ToString(m);
+        %IgnoreAttributesAndSetProperty(this, 'message', ToString(m));
       }
       captureStackTrace(this, f);
     } else {
@@ -987,14 +1006,17 @@ $Error.captureStackTrace = captureStackTrace;
 // Setup extra properties of the Error.prototype object.
 $Error.prototype.message = '';
 
-%SetProperty($Error.prototype, 'toString', function toString() {
+function errorToString() {
   var type = this.type;
   if (type && !this.hasOwnProperty("message")) {
     return this.name + ": " + FormatMessage({ type: type, args: this.arguments });
   }
-  var message = this.message;
-  return this.name + (message ? (": " + message) : "");
-}, DONT_ENUM);
+  var message = this.hasOwnProperty("message") ? (": " + this.message) : "";
+  return this.name + message;
+}
+
+%FunctionSetName(errorToString, 'toString');
+%SetProperty($Error.prototype, 'toString', errorToString, DONT_ENUM);
 
 
 // Boilerplate for exceptions for stack overflows. Used from

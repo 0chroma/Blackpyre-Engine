@@ -37,34 +37,6 @@ namespace v8 {
 namespace internal {
 
 
-// Implementation is from "Hacker's Delight" by Henry S. Warren, Jr.,
-// figure 3-3, page 48, where the function is called clp2.
-uint32_t RoundUpToPowerOf2(uint32_t x) {
-  ASSERT(x <= 0x80000000u);
-  x = x - 1;
-  x = x | (x >> 1);
-  x = x | (x >> 2);
-  x = x | (x >> 4);
-  x = x | (x >> 8);
-  x = x | (x >> 16);
-  return x + 1;
-}
-
-
-// Thomas Wang, Integer Hash Functions.
-// http://www.concentric.net/~Ttwang/tech/inthash.htm
-uint32_t ComputeIntegerHash(uint32_t key) {
-  uint32_t hash = key;
-  hash = ~hash + (hash << 15);  // hash = (hash << 15) - hash - 1;
-  hash = hash ^ (hash >> 12);
-  hash = hash + (hash << 2);
-  hash = hash ^ (hash >> 4);
-  hash = hash * 2057;  // hash = (hash + (hash << 3)) + (hash << 11);
-  hash = hash ^ (hash >> 16);
-  return hash;
-}
-
-
 void PrintF(const char* format, ...) {
   va_list arguments;
   va_start(arguments, format);
@@ -73,8 +45,16 @@ void PrintF(const char* format, ...) {
 }
 
 
-void Flush() {
-  fflush(stdout);
+void PrintF(FILE* out, const char* format, ...) {
+  va_list arguments;
+  va_start(arguments, format);
+  OS::VFPrint(out, format, arguments);
+  va_end(arguments);
+}
+
+
+void Flush(FILE* out) {
+  fflush(out);
 }
 
 
@@ -196,6 +176,23 @@ int WriteCharsToFile(const char* str, int size, FILE* f) {
 }
 
 
+int AppendChars(const char* filename,
+                const char* str,
+                int size,
+                bool verbose) {
+  FILE* f = OS::FOpen(filename, "ab");
+  if (f == NULL) {
+    if (verbose) {
+      OS::PrintError("Cannot open file %s for writing.\n", filename);
+    }
+    return 0;
+  }
+  int written = WriteCharsToFile(str, size, f);
+  fclose(f);
+  return written;
+}
+
+
 int WriteChars(const char* filename,
                const char* str,
                int size,
@@ -242,11 +239,16 @@ void StringBuilder::AddSubstring(const char* s, int n) {
 
 
 void StringBuilder::AddFormatted(const char* format, ...) {
+  va_list arguments;
+  va_start(arguments, format);
+  AddFormattedList(format, arguments);
+  va_end(arguments);
+}
+
+
+void StringBuilder::AddFormattedList(const char* format, va_list list) {
   ASSERT(!is_finalized() && position_ < buffer_.length());
-  va_list args;
-  va_start(args, format);
-  int n = OS::VSNPrintF(buffer_ + position_, format, args);
-  va_end(args);
+  int n = OS::VSNPrintF(buffer_ + position_, format, list);
   if (n < 0 || n >= (buffer_.length() - position_)) {
     position_ = buffer_.length();
   } else {
@@ -273,13 +275,5 @@ char* StringBuilder::Finalize() {
   return buffer_.start();
 }
 
-
-int TenToThe(int exponent) {
-  ASSERT(exponent <= 9);
-  ASSERT(exponent >= 1);
-  int answer = 10;
-  for (int i = 1; i < exponent; i++) answer *= 10;
-  return answer;
-}
 
 } }  // namespace v8::internal

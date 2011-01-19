@@ -39,6 +39,7 @@ class GameObject {
         float initialAngle;
 
     friend class ObjectManager;
+    friend class Scripting;
 };
 
 #endif // GameObject_h 

@@ -38,6 +38,7 @@
 #include "utils.h"
 #include "cctest.h"
 #include "parser.h"
+#include "unicode-inl.h"
 
 static const bool kLogThreading = true;
 
@@ -810,6 +811,75 @@ THREADED_TEST(FunctionTemplate) {
     result = v8_compile("(new obj()).m")->Run();
     CHECK_EQ(239, result->Int32Value());
   }
+}
+
+
+static void* expected_ptr;
+static v8::Handle<v8::Value> callback(const v8::Arguments& args) {
+  void* ptr = v8::External::Unwrap(args.Data());
+  CHECK_EQ(expected_ptr, ptr);
+  return v8::Boolean::New(true);
+}
+
+
+static void TestExternalPointerWrapping() {
+  v8::HandleScope scope;
+  LocalContext env;
+
+  v8::Handle<v8::Value> data = v8::External::Wrap(expected_ptr);
+
+  v8::Handle<v8::Object> obj = v8::Object::New();
+  obj->Set(v8_str("func"),
+           v8::FunctionTemplate::New(callback, data)->GetFunction());
+  env->Global()->Set(v8_str("obj"), obj);
+
+  CHECK(CompileRun(
+        "function foo() {\n"
+        "  for (var i = 0; i < 13; i++) obj.func();\n"
+        "}\n"
+        "foo(), true")->BooleanValue());
+}
+
+
+THREADED_TEST(ExternalWrap) {
+  // Check heap allocated object.
+  int* ptr = new int;
+  expected_ptr = ptr;
+  TestExternalPointerWrapping();
+  delete ptr;
+
+  // Check stack allocated object.
+  int foo;
+  expected_ptr = &foo;
+  TestExternalPointerWrapping();
+
+  // Check not aligned addresses.
+  const int n = 100;
+  char* s = new char[n];
+  for (int i = 0; i < n; i++) {
+    expected_ptr = s + i;
+    TestExternalPointerWrapping();
+  }
+
+  delete[] s;
+
+  // Check several invalid addresses.
+  expected_ptr = reinterpret_cast<void*>(1);
+  TestExternalPointerWrapping();
+
+  expected_ptr = reinterpret_cast<void*>(0xdeadbeef);
+  TestExternalPointerWrapping();
+
+  expected_ptr = reinterpret_cast<void*>(0xdeadbeef + 1);
+  TestExternalPointerWrapping();
+
+#if defined(V8_HOST_ARCH_X64)
+  expected_ptr = reinterpret_cast<void*>(0xdeadbeefdeadbeef);
+  TestExternalPointerWrapping();
+
+  expected_ptr = reinterpret_cast<void*>(0xdeadbeefdeadbeef + 1);
+  TestExternalPointerWrapping();
+#endif
 }
 
 
@@ -2284,6 +2354,30 @@ TEST(TryCatchInTryFinally) {
                                    "} catch (e) {"
                                    "}");
   CHECK(result->IsTrue());
+}
+
+
+static void check_reference_error_message(
+    v8::Handle<v8::Message> message,
+    v8::Handle<v8::Value> data) {
+  const char* reference_error = "Uncaught ReferenceError: asdf is not defined";
+  CHECK(message->Get()->Equals(v8_str(reference_error)));
+}
+
+
+// Test that overwritten toString methods are not invoked on uncaught
+// exception formatting. However, they are invoked when performing
+// normal error string conversions.
+TEST(APIThrowMessageOverwrittenToString) {
+  v8::HandleScope scope;
+  v8::V8::AddMessageListener(check_reference_error_message);
+  LocalContext context;
+  CompileRun("ReferenceError.prototype.toString ="
+             "  function() { return 'Whoops' }");
+  CompileRun("asdf;");
+  v8::Handle<Value> string = CompileRun("try { asdf; } catch(e) { e + ''; }");
+  CHECK(string->Equals(v8_str("Whoops")));
+  v8::V8::RemoveMessageListeners(check_message);
 }
 
 
@@ -4343,47 +4437,167 @@ THREADED_TEST(ObjectInstantiation) {
 }
 
 
+static int StrCmp16(uint16_t* a, uint16_t* b) {
+  while (true) {
+    if (*a == 0 && *b == 0) return 0;
+    if (*a != *b) return 0 + *a - *b;
+    a++;
+    b++;
+  }
+}
+
+
+static int StrNCmp16(uint16_t* a, uint16_t* b, int n) {
+  while (true) {
+    if (n-- == 0) return 0;
+    if (*a == 0 && *b == 0) return 0;
+    if (*a != *b) return 0 + *a - *b;
+    a++;
+    b++;
+  }
+}
+
+
 THREADED_TEST(StringWrite) {
   v8::HandleScope scope;
   v8::Handle<String> str = v8_str("abcde");
+  // abc<Icelandic eth><Unicode snowman>.
+  v8::Handle<String> str2 = v8_str("abc\303\260\342\230\203");
+
+  CHECK_EQ(5, str2->Length());
 
   char buf[100];
+  char utf8buf[100];
+  uint16_t wbuf[100];
   int len;
+  int charlen;
+
+  memset(utf8buf, 0x1, sizeof(utf8buf));
+  len = str2->WriteUtf8(utf8buf, sizeof(utf8buf), &charlen);
+  CHECK_EQ(len, 9);
+  CHECK_EQ(charlen, 5);
+  CHECK_EQ(strcmp(utf8buf, "abc\303\260\342\230\203"), 0);
+
+  memset(utf8buf, 0x1, sizeof(utf8buf));
+  len = str2->WriteUtf8(utf8buf, 8, &charlen);
+  CHECK_EQ(len, 8);
+  CHECK_EQ(charlen, 5);
+  CHECK_EQ(strncmp(utf8buf, "abc\303\260\342\230\203\1", 9), 0);
+
+  memset(utf8buf, 0x1, sizeof(utf8buf));
+  len = str2->WriteUtf8(utf8buf, 7, &charlen);
+  CHECK_EQ(len, 5);
+  CHECK_EQ(charlen, 4);
+  CHECK_EQ(strncmp(utf8buf, "abc\303\260\1", 5), 0);
+
+  memset(utf8buf, 0x1, sizeof(utf8buf));
+  len = str2->WriteUtf8(utf8buf, 6, &charlen);
+  CHECK_EQ(len, 5);
+  CHECK_EQ(charlen, 4);
+  CHECK_EQ(strncmp(utf8buf, "abc\303\260\1", 5), 0);
+
+  memset(utf8buf, 0x1, sizeof(utf8buf));
+  len = str2->WriteUtf8(utf8buf, 5, &charlen);
+  CHECK_EQ(len, 5);
+  CHECK_EQ(charlen, 4);
+  CHECK_EQ(strncmp(utf8buf, "abc\303\260\1", 5), 0);
+
+  memset(utf8buf, 0x1, sizeof(utf8buf));
+  len = str2->WriteUtf8(utf8buf, 4, &charlen);
+  CHECK_EQ(len, 3);
+  CHECK_EQ(charlen, 3);
+  CHECK_EQ(strncmp(utf8buf, "abc\1", 4), 0);
+
+  memset(utf8buf, 0x1, sizeof(utf8buf));
+  len = str2->WriteUtf8(utf8buf, 3, &charlen);
+  CHECK_EQ(len, 3);
+  CHECK_EQ(charlen, 3);
+  CHECK_EQ(strncmp(utf8buf, "abc\1", 4), 0);
+
+  memset(utf8buf, 0x1, sizeof(utf8buf));
+  len = str2->WriteUtf8(utf8buf, 2, &charlen);
+  CHECK_EQ(len, 2);
+  CHECK_EQ(charlen, 2);
+  CHECK_EQ(strncmp(utf8buf, "ab\1", 3), 0);
 
   memset(buf, 0x1, sizeof(buf));
+  memset(wbuf, 0x1, sizeof(wbuf));
   len = str->WriteAscii(buf);
   CHECK_EQ(len, 5);
-  CHECK_EQ(strncmp("abcde\0", buf, 6), 0);
+  len = str->Write(wbuf);
+  CHECK_EQ(len, 5);
+  CHECK_EQ(strcmp("abcde", buf), 0);
+  uint16_t answer1[] = {'a', 'b', 'c', 'd', 'e', '\0'};
+  CHECK_EQ(StrCmp16(answer1, wbuf), 0);
 
   memset(buf, 0x1, sizeof(buf));
+  memset(wbuf, 0x1, sizeof(wbuf));
   len = str->WriteAscii(buf, 0, 4);
   CHECK_EQ(len, 4);
+  len = str->Write(wbuf, 0, 4);
+  CHECK_EQ(len, 4);
   CHECK_EQ(strncmp("abcd\1", buf, 5), 0);
+  uint16_t answer2[] = {'a', 'b', 'c', 'd', 0x101};
+  CHECK_EQ(StrNCmp16(answer2, wbuf, 5), 0);
 
   memset(buf, 0x1, sizeof(buf));
+  memset(wbuf, 0x1, sizeof(wbuf));
   len = str->WriteAscii(buf, 0, 5);
   CHECK_EQ(len, 5);
+  len = str->Write(wbuf, 0, 5);
+  CHECK_EQ(len, 5);
   CHECK_EQ(strncmp("abcde\1", buf, 6), 0);
+  uint16_t answer3[] = {'a', 'b', 'c', 'd', 'e', 0x101};
+  CHECK_EQ(StrNCmp16(answer3, wbuf, 6), 0);
 
   memset(buf, 0x1, sizeof(buf));
+  memset(wbuf, 0x1, sizeof(wbuf));
   len = str->WriteAscii(buf, 0, 6);
   CHECK_EQ(len, 5);
-  CHECK_EQ(strncmp("abcde\0", buf, 6), 0);
+  len = str->Write(wbuf, 0, 6);
+  CHECK_EQ(len, 5);
+  CHECK_EQ(strcmp("abcde", buf), 0);
+  uint16_t answer4[] = {'a', 'b', 'c', 'd', 'e', '\0'};
+  CHECK_EQ(StrCmp16(answer4, wbuf), 0);
 
   memset(buf, 0x1, sizeof(buf));
+  memset(wbuf, 0x1, sizeof(wbuf));
   len = str->WriteAscii(buf, 4, -1);
   CHECK_EQ(len, 1);
-  CHECK_EQ(strncmp("e\0", buf, 2), 0);
+  len = str->Write(wbuf, 4, -1);
+  CHECK_EQ(len, 1);
+  CHECK_EQ(strcmp("e", buf), 0);
+  uint16_t answer5[] = {'e', '\0'};
+  CHECK_EQ(StrCmp16(answer5, wbuf), 0);
 
   memset(buf, 0x1, sizeof(buf));
+  memset(wbuf, 0x1, sizeof(wbuf));
   len = str->WriteAscii(buf, 4, 6);
   CHECK_EQ(len, 1);
-  CHECK_EQ(strncmp("e\0", buf, 2), 0);
+  len = str->Write(wbuf, 4, 6);
+  CHECK_EQ(len, 1);
+  CHECK_EQ(strcmp("e", buf), 0);
+  CHECK_EQ(StrCmp16(answer5, wbuf), 0);
 
   memset(buf, 0x1, sizeof(buf));
+  memset(wbuf, 0x1, sizeof(wbuf));
   len = str->WriteAscii(buf, 4, 1);
   CHECK_EQ(len, 1);
+  len = str->Write(wbuf, 4, 1);
+  CHECK_EQ(len, 1);
   CHECK_EQ(strncmp("e\1", buf, 2), 0);
+  uint16_t answer6[] = {'e', 0x101};
+  CHECK_EQ(StrNCmp16(answer6, wbuf, 2), 0);
+
+  memset(buf, 0x1, sizeof(buf));
+  memset(wbuf, 0x1, sizeof(wbuf));
+  len = str->WriteAscii(buf, 3, 1);
+  CHECK_EQ(len, 1);
+  len = str->Write(wbuf, 3, 1);
+  CHECK_EQ(len, 1);
+  CHECK_EQ(strncmp("d\1", buf, 2), 0);
+  uint16_t answer7[] = {'d', 0x101};
+  CHECK_EQ(StrNCmp16(answer7, wbuf, 2), 0);
 }
 
 
@@ -5677,6 +5891,22 @@ THREADED_TEST(GlobalObjectInstanceProperties) {
   instance_template->Set(v8_str("f"),
                          v8::FunctionTemplate::New(InstanceFunctionCallback));
 
+  // The script to check how Crankshaft compiles missing global function
+  // invocations.  function g is not defined and should throw on call.
+  const char* script =
+      "function wrapper(call) {"
+      "  var x = 0, y = 1;"
+      "  for (var i = 0; i < 1000; i++) {"
+      "    x += i * 100;"
+      "    y += i * 100;"
+      "  }"
+      "  if (call) g();"
+      "}"
+      "for (var i = 0; i < 17; i++) wrapper(false);"
+      "var thrown = 0;"
+      "try { wrapper(true); } catch (e) { thrown = 1; };"
+      "thrown";
+
   {
     LocalContext env(NULL, instance_template);
     // Hold on to the global object so it can be used again in another
@@ -5687,6 +5917,8 @@ THREADED_TEST(GlobalObjectInstanceProperties) {
     CHECK_EQ(42, value->Int32Value());
     value = Script::Compile(v8_str("f()"))->Run();
     CHECK_EQ(12, value->Int32Value());
+    value = Script::Compile(v8_str(script))->Run();
+    CHECK_EQ(1, value->Int32Value());
   }
 
   {
@@ -5696,6 +5928,48 @@ THREADED_TEST(GlobalObjectInstanceProperties) {
     CHECK_EQ(42, value->Int32Value());
     value = Script::Compile(v8_str("f()"))->Run();
     CHECK_EQ(12, value->Int32Value());
+    value = Script::Compile(v8_str(script))->Run();
+    CHECK_EQ(1, value->Int32Value());
+  }
+}
+
+
+THREADED_TEST(CallKnownGlobalReceiver) {
+  v8::HandleScope handle_scope;
+
+  Local<Value> global_object;
+
+  Local<v8::FunctionTemplate> t = v8::FunctionTemplate::New();
+  Local<ObjectTemplate> instance_template = t->InstanceTemplate();
+
+  // The script to check that we leave global object not
+  // global object proxy on stack when we deoptimize from inside
+  // arguments evaluation.
+  // To provoke error we need to both force deoptimization
+  // from arguments evaluation and to force CallIC to take
+  // CallIC_Miss code path that can't cope with global proxy.
+  const char* script =
+      "function bar(x, y) { try { } finally { } }"
+      "function baz(x) { try { } finally { } }"
+      "function bom(x) { try { } finally { } }"
+      "function foo(x) { bar([x], bom(2)); }"
+      "for (var i = 0; i < 10000; i++) foo(1);"
+      "foo";
+
+  Local<Value> foo;
+  {
+    LocalContext env(NULL, instance_template);
+    // Hold on to the global object so it can be used again in another
+    // environment initialization.
+    global_object = env->Global();
+    foo = Script::Compile(v8_str(script))->Run();
+  }
+
+  {
+    // Create new environment reusing the global object.
+    LocalContext env(NULL, instance_template, global_object);
+    env->Global()->Set(v8_str("foo"), foo);
+    Local<Value> value = Script::Compile(v8_str("foo()"))->Run();
   }
 }
 
@@ -6323,7 +6597,7 @@ static void CheckInterceptorLoadIC(NamedPropertyGetter getter,
                                    int expected) {
   v8::HandleScope scope;
   v8::Handle<v8::ObjectTemplate> templ = ObjectTemplate::New();
-  templ->SetNamedPropertyHandler(getter);
+  templ->SetNamedPropertyHandler(getter, 0, 0, 0, 0, v8_str("data"));
   LocalContext context;
   context->Global()->Set(v8_str("o"), templ->NewInstance());
   v8::Handle<Value> value = CompileRun(source);
@@ -6334,7 +6608,8 @@ static void CheckInterceptorLoadIC(NamedPropertyGetter getter,
 static v8::Handle<Value> InterceptorLoadICGetter(Local<String> name,
                                                  const AccessorInfo& info) {
   ApiTestFuzzer::Fuzz();
-  CHECK(v8_str("x")->Equals(name));
+  CHECK_EQ(v8_str("data"), info.Data());
+  CHECK_EQ(v8_str("x"), name);
   return v8::Integer::New(42);
 }
 
@@ -6732,7 +7007,8 @@ THREADED_TEST(InterceptorStoreIC) {
   v8::HandleScope scope;
   v8::Handle<v8::ObjectTemplate> templ = ObjectTemplate::New();
   templ->SetNamedPropertyHandler(InterceptorLoadICGetter,
-                                 InterceptorStoreICSetter);
+                                 InterceptorStoreICSetter,
+                                 0, 0, 0, v8_str("data"));
   LocalContext context;
   context->Global()->Set(v8_str("o"), templ->NewInstance());
   v8::Handle<Value> value = CompileRun(
@@ -7816,6 +8092,31 @@ THREADED_TEST(ObjectProtoToString) {
 }
 
 
+THREADED_TEST(ObjectGetConstructorName) {
+  v8::HandleScope scope;
+  LocalContext context;
+  v8_compile("function Parent() {};"
+             "function Child() {};"
+             "Child.prototype = new Parent();"
+             "var outer = { inner: function() { } };"
+             "var p = new Parent();"
+             "var c = new Child();"
+             "var x = new outer.inner();")->Run();
+
+  Local<v8::Value> p = context->Global()->Get(v8_str("p"));
+  CHECK(p->IsObject() && p->ToObject()->GetConstructorName()->Equals(
+      v8_str("Parent")));
+
+  Local<v8::Value> c = context->Global()->Get(v8_str("c"));
+  CHECK(c->IsObject() && c->ToObject()->GetConstructorName()->Equals(
+      v8_str("Child")));
+
+  Local<v8::Value> x = context->Global()->Get(v8_str("x"));
+  CHECK(x->IsObject() && x->ToObject()->GetConstructorName()->Equals(
+      v8_str("outer.inner")));
+}
+
+
 bool ApiTestFuzzer::fuzzing_ = false;
 i::Semaphore* ApiTestFuzzer::all_tests_done_=
   i::OS::CreateSemaphore(0);
@@ -8643,6 +8944,105 @@ THREADED_TEST(TurnOnAccessCheck) {
 }
 
 
+v8::Handle<v8::String> a;
+v8::Handle<v8::String> h;
+
+static bool NamedGetAccessBlockAandH(Local<v8::Object> obj,
+                                       Local<Value> name,
+                                       v8::AccessType type,
+                                       Local<Value> data) {
+  return !(name->Equals(a) || name->Equals(h));
+}
+
+
+THREADED_TEST(TurnOnAccessCheckAndRecompile) {
+  v8::HandleScope handle_scope;
+
+  // Create an environment with access check to the global object disabled by
+  // default. When the registered access checker will block access to properties
+  // a and h
+  a = v8_str("a");
+  h = v8_str("h");
+  v8::Handle<v8::ObjectTemplate> global_template = v8::ObjectTemplate::New();
+  global_template->SetAccessCheckCallbacks(NamedGetAccessBlockAandH,
+                                           IndexedGetAccessBlocker,
+                                           v8::Handle<v8::Value>(),
+                                           false);
+  v8::Persistent<Context> context = Context::New(NULL, global_template);
+  Context::Scope context_scope(context);
+
+  // Set up a property and a number of functions.
+  context->Global()->Set(v8_str("a"), v8_num(1));
+  static const char* source = "function f1() {return a;}"
+                              "function f2() {return a;}"
+                              "function g1() {return h();}"
+                              "function g2() {return h();}"
+                              "function h() {return 1;}";
+
+  CompileRun(source);
+  Local<Function> f1;
+  Local<Function> f2;
+  Local<Function> g1;
+  Local<Function> g2;
+  Local<Function> h;
+  f1 = Local<Function>::Cast(context->Global()->Get(v8_str("f1")));
+  f2 = Local<Function>::Cast(context->Global()->Get(v8_str("f2")));
+  g1 = Local<Function>::Cast(context->Global()->Get(v8_str("g1")));
+  g2 = Local<Function>::Cast(context->Global()->Get(v8_str("g2")));
+  h =  Local<Function>::Cast(context->Global()->Get(v8_str("h")));
+
+  // Get the global object.
+  v8::Handle<v8::Object> global = context->Global();
+
+  // Call f1 one time and f2 a number of times. This will ensure that f1 still
+  // uses the runtime system to retreive property a whereas f2 uses global load
+  // inline cache.
+  CHECK(f1->Call(global, 0, NULL)->Equals(v8_num(1)));
+  for (int i = 0; i < 4; i++) {
+    CHECK(f2->Call(global, 0, NULL)->Equals(v8_num(1)));
+  }
+
+  // Same for g1 and g2.
+  CHECK(g1->Call(global, 0, NULL)->Equals(v8_num(1)));
+  for (int i = 0; i < 4; i++) {
+    CHECK(g2->Call(global, 0, NULL)->Equals(v8_num(1)));
+  }
+
+  // Detach the global and turn on access check now blocking access to property
+  // a and function h.
+  context->DetachGlobal();
+  context->Global()->TurnOnAccessCheck();
+
+  // Failing access check to property get results in undefined.
+  CHECK(f1->Call(global, 0, NULL)->IsUndefined());
+  CHECK(f2->Call(global, 0, NULL)->IsUndefined());
+
+  // Failing access check to function call results in exception.
+  CHECK(g1->Call(global, 0, NULL).IsEmpty());
+  CHECK(g2->Call(global, 0, NULL).IsEmpty());
+
+  // No failing access check when just returning a constant.
+  CHECK(h->Call(global, 0, NULL)->Equals(v8_num(1)));
+
+  // Now compile the source again. And get the newly compiled functions, except
+  // for h for which access is blocked.
+  CompileRun(source);
+  f1 = Local<Function>::Cast(context->Global()->Get(v8_str("f1")));
+  f2 = Local<Function>::Cast(context->Global()->Get(v8_str("f2")));
+  g1 = Local<Function>::Cast(context->Global()->Get(v8_str("g1")));
+  g2 = Local<Function>::Cast(context->Global()->Get(v8_str("g2")));
+  CHECK(context->Global()->Get(v8_str("h"))->IsUndefined());
+
+  // Failing access check to property get results in undefined.
+  CHECK(f1->Call(global, 0, NULL)->IsUndefined());
+  CHECK(f2->Call(global, 0, NULL)->IsUndefined());
+
+  // Failing access check to function call results in exception.
+  CHECK(g1->Call(global, 0, NULL).IsEmpty());
+  CHECK(g2->Call(global, 0, NULL).IsEmpty());
+}
+
+
 // This test verifies that pre-compilation (aka preparsing) can be called
 // without initializing the whole VM. Thus we cannot run this test in a
 // multi-threaded setup.
@@ -8731,7 +9131,7 @@ TEST(PreCompileInvalidPreparseDataError) {
       v8::ScriptData::PreCompile(script, i::StrLength(script));
   CHECK(!sd->HasError());
   // ScriptDataImpl private implementation details
-  const int kHeaderSize = i::ScriptDataImpl::kHeaderSize;
+  const int kHeaderSize = i::PreparseDataConstants::kHeaderSize;
   const int kFunctionEntrySize = i::FunctionEntry::kSize;
   const int kFunctionEntryStartOffset = 0;
   const int kFunctionEntryEndOffset = 1;
@@ -10494,7 +10894,9 @@ v8::Handle<Value> AnalyzeStackInNativeCode(const v8::Arguments& args) {
 
 
 // Tests the C++ StackTrace API.
-THREADED_TEST(CaptureStackTrace) {
+// TODO(3074796): Reenable this as a THREADED_TEST once it passes.
+// THREADED_TEST(CaptureStackTrace) {
+TEST(CaptureStackTrace) {
   v8::HandleScope scope;
   v8::Handle<v8::String> origin = v8::String::New("capture-stack-trace-test");
   Local<ObjectTemplate> templ = ObjectTemplate::New();
@@ -10629,7 +11031,7 @@ THREADED_TEST(IdleNotification) {
 static uint32_t* stack_limit;
 
 static v8::Handle<Value> GetStackLimitCallback(const v8::Arguments& args) {
-  stack_limit = reinterpret_cast<uint32_t*>(i::StackGuard::climit());
+  stack_limit = reinterpret_cast<uint32_t*>(i::StackGuard::real_climit());
   return v8::Undefined();
 }
 
