@@ -1,0 +1,16 @@
+#ifndef code_google_com_p_v8_juice_CONFIG_HPP_INCLUDED
+#define code_google_com_p_v8_juice_CONFIG_HPP_INCLUDED 1
+
+// Compile-time configuration options for the v8::juice toolkit.
+
+#define v8_juice_LIBRARY_VERSION_STRING "@PACKAGE_VERSION@"
+#define v8_juice_LIBRARY_VERSION @PACKAGE_VERSION@
+
+/**
+	Path used by v8::juice::IncludesPath()
+*/
+#define v8_juice_CONFIG_SCRIPTS_PATH std::string("@v8_juice_CONFIG_SCRIPTS_PATH@")
+
+#define v8_juice_HOME_PAGE "@PACKAGE_URL@"
+
+#endif // code_google_com_p_v8_juice_CONFIG_HPP_INCLUDED

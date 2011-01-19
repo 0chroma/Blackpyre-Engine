@@ -15,11 +15,13 @@
 #include "util.h"
 
 #include <v8.h>
+#include <v8/juice/ClassWrap.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
 
 Scripting *Scripting::instance = 0;
 v8::Handle<v8::Context> Scripting::context;
@@ -37,11 +39,17 @@ void Scripting::init(){
     v8::HandleScope handle_scope;
     // Get the template for the global object.
     v8::Handle<v8::ObjectTemplate> global = getObjectTemplate();
+    
     // Create a new execution environment containing the built-in
     // functions
     context = v8::Context::New(NULL, global);
+
+
     // Enter the newly created execution environment.
     v8::Context::Scope context_scope(context);
+
+
+    Scripting::setupEntityClass(context->Global());
     fprintf(stderr, "Scripting environment initialized!\n");
 }
 
@@ -75,30 +83,76 @@ v8::Handle<v8::ObjectTemplate> Scripting::getObjectTemplate(){
     global->Set(v8::String::New("quit"), v8::FunctionTemplate::New(func_quit));
     // Bind the global 'print' function to the C++ Print callback.
     global->Set(v8::String::New("print"), v8::FunctionTemplate::New(func_print));
-    global->Set(v8::String::New("createEntity"), v8::FunctionTemplate::New(func_createEntity));
+    //global->Set(v8::String::New("createEntity"), v8::FunctionTemplate::New(func_createEntity));
+    
 
     return global;
 }
 
 // ======== Object Template Constructors for Entity and friends ========
 
-v8::Handle<v8::ObjectTemplate> Scripting::getEntityObjectTemplate(Entity *entity){
-    v8::Handle<v8::ObjectTemplate> entity_template = v8::ObjectTemplate::New();
+v8::Handle<v8::Object> Scripting::setupEntityClass(v8::Handle<v8::Object> dest){
+    using namespace v8;
+    using namespace v8::juice;
+    HandleScope scope;
+
+    typedef cw::ClassWrap<Entity> CW;
+    CW & cw( CW::Instance() );
     
-    //give our entity template an internal field so we can track multiple instances
-    entity_template->SetInternalFieldCount(1);
 
-    v8::Local<v8::Object> obj = entity_template->NewInstance();
-
-    //setup accessors and function wrappers
-
-    obj->SetInternalField(0, External::New(entity));
-
-    return obj;
+    cw.Set( "destroy", CW::DestroyObject );
+    cw.Seal(); // ends the binding process
+    cw.AddClassTo( dest ); // installs BoundNative class in dest
+    return cw.CtorTemplate()->GetFunction();
 }
 
-// ======== Runtime ========
+// ======== Policy Classes for v8::Juice ========
 
+namespace v8 { namespace juice { namespace cw {
+    // constructor binding
+    template <>
+    struct Factory<Entity>
+        : Factory_CtorForwarder<Entity,
+            tmp::TypeList<
+                convert::CtorForwarder6<Entity,float,float,float,float,float,std::string>
+            >
+        >
+    {};
+}}}
+
+//define JS-side name for classes
+JUICE_CLASSWRAP_CLASSNAME(Entity,"Entity")
+
+
+// we need this so that we can convert floats to and from their JS natives, since Juice doesn't support it out of the box
+
+namespace v8 { namespace juice { namespace convert {
+        template <>
+        struct NativeToJS<float>
+        {
+            v8::Handle<v8::Value> operator()( float v ) const
+            {
+                return Number::New( static_cast<double>(v) );
+            }
+        };
+                                                                    
+        template <>
+        struct JSToNative<float>
+        {
+            typedef float ResultType;
+            ResultType operator()( v8::Handle<v8::Value> const & h ) const
+            {
+                return h.IsEmpty() ? 0.0 : (h->IsNumber() ? static_cast<float>(h->NumberValue()) : 0.0);
+            }
+        };
+
+        // Optional:
+        static const NativeToJS<float> FloatToJS = NativeToJS<float>();
+        static const JSToNative<float> JSToFloat = JSToNative<float>();
+} } }
+
+// ======== Runtime ========
+/*
 v8::Handle<v8::Value> Scripting::func_createEntity(const v8::Arguments& args) {
     if (args.Length() < 1) return v8::Undefined();
     v8::HandleScope handle_scope;
@@ -110,8 +164,8 @@ v8::Handle<v8::Value> Scripting::func_createEntity(const v8::Arguments& args) {
     Entity *a = new Entity(300.0f, 200.0f, 100.0f, 100.0f, angle, "bullet.png"); 
     objectManager->addObject(a);
 
-    return getEntityObjectTemplate(entity);
-}
+    return getEntityObjectTemplate(a);
+}*/
 
 v8::Handle<v8::Value> Scripting::func_load(const v8::Arguments& args) {
     for(int i = 0; i < args.Length(); i++){

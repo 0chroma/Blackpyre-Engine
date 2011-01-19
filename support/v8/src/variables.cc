@@ -86,6 +86,24 @@ bool Variable::IsStackAllocated() const {
 }
 
 
+bool Variable::IsParameter() const {
+  Slot* s = AsSlot();
+  return s != NULL && s->type() == Slot::PARAMETER;
+}
+
+
+bool Variable::IsStackLocal() const {
+  Slot* s = AsSlot();
+  return s != NULL && s->type() == Slot::LOCAL;
+}
+
+
+bool Variable::IsContextSlot() const {
+  Slot* s = AsSlot();
+  return s != NULL && s->type() == Slot::CONTEXT;
+}
+
+
 Variable::Variable(Scope* scope,
                    Handle<String> name,
                    Mode mode,

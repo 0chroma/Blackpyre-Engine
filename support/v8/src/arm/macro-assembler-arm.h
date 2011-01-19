@@ -1,4 +1,4 @@
-// Copyright 2006-2009 the V8 project authors. All rights reserved.
+// Copyright 2010 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -32,6 +32,9 @@
 
 namespace v8 {
 namespace internal {
+
+// Forward declaration.
+class PostCallGenerator;
 
 // ----------------------------------------------------------------------------
 // Static helper functions
@@ -96,6 +99,7 @@ class MacroAssembler: public Assembler {
   // from the stack, clobbering only the sp register.
   void Drop(int count, Condition cond = al);
 
+  void Ret(int drop, Condition cond = al);
 
   // Swap two registers.  If the scratch register is omitted then a slightly
   // less efficient form using xor instead of mov is emitted.
@@ -224,6 +228,15 @@ class MacroAssembler: public Assembler {
     }
   }
 
+  // Push and pop the registers that can hold pointers, as defined by the
+  // RegList constant kSafepointSavedRegisters.
+  void PushSafepointRegisters();
+  void PopSafepointRegisters();
+  void PushSafepointRegistersAndDoubles();
+  void PopSafepointRegistersAndDoubles();
+
+  static int SafepointRegisterStackIndex(int reg_code);
+
   // Load two consecutive registers with two consecutive memory locations.
   void Ldrd(Register dst1,
             Register dst2,
@@ -236,10 +249,29 @@ class MacroAssembler: public Assembler {
             const MemOperand& dst,
             Condition cond = al);
 
-  // ---------------------------------------------------------------------------
-  // Stack limit support
+  // Clear specified FPSCR bits.
+  void ClearFPSCRBits(const uint32_t bits_to_clear,
+                      const Register scratch,
+                      const Condition cond = al);
 
-  void StackLimitCheck(Label* on_stack_limit_hit);
+  // Compare double values and move the result to the normal condition flags.
+  void VFPCompareAndSetFlags(const DwVfpRegister src1,
+                             const DwVfpRegister src2,
+                             const Condition cond = al);
+  void VFPCompareAndSetFlags(const DwVfpRegister src1,
+                             const double src2,
+                             const Condition cond = al);
+
+  // Compare double values and then load the fpscr flags to a register.
+  void VFPCompareAndLoadFlags(const DwVfpRegister src1,
+                              const DwVfpRegister src2,
+                              const Register fpscr_flags,
+                              const Condition cond = al);
+  void VFPCompareAndLoadFlags(const DwVfpRegister src1,
+                              const double src2,
+                              const Register fpscr_flags,
+                              const Condition cond = al);
+
 
   // ---------------------------------------------------------------------------
   // Activation frames
@@ -254,15 +286,23 @@ class MacroAssembler: public Assembler {
   // Expects the number of arguments in register r0 and
   // the builtin function to call in register r1. Exits with argc in
   // r4, argv in r6, and and the builtin function to call in r5.
-  void EnterExitFrame();
+  void EnterExitFrame(bool save_doubles);
 
   // Leave the current exit frame. Expects the return value in r0.
-  void LeaveExitFrame();
+  void LeaveExitFrame(bool save_doubles);
 
   // Get the actual activation frame alignment for target environment.
   static int ActivationFrameAlignment();
 
   void LoadContext(Register dst, int context_chain_length);
+
+  void LoadGlobalFunction(int index, Register function);
+
+  // Load the initial map from the global function. The registers
+  // function and map can be the same, function is then overwritten.
+  void LoadGlobalFunctionInitialMap(Register function,
+                                    Register map,
+                                    Register scratch);
 
   // ---------------------------------------------------------------------------
   // JavaScript invokes
@@ -271,7 +311,8 @@ class MacroAssembler: public Assembler {
   void InvokeCode(Register code,
                   const ParameterCount& expected,
                   const ParameterCount& actual,
-                  InvokeFlag flag);
+                  InvokeFlag flag,
+                  PostCallGenerator* post_call_generator = NULL);
 
   void InvokeCode(Handle<Code> code,
                   const ParameterCount& expected,
@@ -283,12 +324,25 @@ class MacroAssembler: public Assembler {
   // current context to the context in the function before invoking.
   void InvokeFunction(Register function,
                       const ParameterCount& actual,
-                      InvokeFlag flag);
+                      InvokeFlag flag,
+                      PostCallGenerator* post_call_generator = NULL);
 
   void InvokeFunction(JSFunction* function,
                       const ParameterCount& actual,
                       InvokeFlag flag);
 
+  void IsObjectJSObjectType(Register heap_object,
+                            Register map,
+                            Register scratch,
+                            Label* fail);
+
+  void IsInstanceJSObjectType(Register map,
+                              Register scratch,
+                              Label* fail);
+
+  void IsObjectJSStringType(Register object,
+                            Register scratch,
+                            Label* fail);
 
 #ifdef ENABLE_DEBUGGER_SUPPORT
   // ---------------------------------------------------------------------------
@@ -319,16 +373,51 @@ class MacroAssembler: public Assembler {
                               Register scratch,
                               Label* miss);
 
+  inline void MarkCode(NopMarkerTypes type) {
+    nop(type);
+  }
+
+  // Check if the given instruction is a 'type' marker.
+  // ie. check if is is a mov r<type>, r<type> (referenced as nop(type))
+  // These instructions are generated to mark special location in the code,
+  // like some special IC code.
+  static inline bool IsMarkedCode(Instr instr, int type) {
+    ASSERT((FIRST_IC_MARKER <= type) && (type < LAST_CODE_MARKER));
+    return IsNop(instr, type);
+  }
+
+
+  static inline int GetCodeMarker(Instr instr) {
+    int dst_reg_offset = 12;
+    int dst_mask = 0xf << dst_reg_offset;
+    int src_mask = 0xf;
+    int dst_reg = (instr & dst_mask) >> dst_reg_offset;
+    int src_reg = instr & src_mask;
+    uint32_t non_register_mask = ~(dst_mask | src_mask);
+    uint32_t mov_mask = al | 13 << 21;
+
+    // Return <n> if we have a mov rn rn, else return -1.
+    int type = ((instr & non_register_mask) == mov_mask) &&
+               (dst_reg == src_reg) &&
+               (FIRST_IC_MARKER <= dst_reg) && (dst_reg < LAST_CODE_MARKER)
+                   ? src_reg
+                   : -1;
+    ASSERT((type == -1) ||
+           ((FIRST_IC_MARKER <= type) && (type < LAST_CODE_MARKER)));
+    return type;
+  }
+
 
   // ---------------------------------------------------------------------------
   // Allocation support
 
-  // Allocate an object in new space. The object_size is specified in words (not
-  // bytes). If the new space is exhausted control continues at the gc_required
-  // label. The allocated object is returned in result. If the flag
-  // tag_allocated_object is true the result is tagged as as a heap object. All
-  // registers are clobbered also when control continues at the gc_required
-  // label.
+  // Allocate an object in new space. The object_size is specified
+  // either in bytes or in words if the allocation flag SIZE_IN_WORDS
+  // is passed. If the new space is exhausted control continues at the
+  // gc_required label. The allocated object is returned in result. If
+  // the flag tag_allocated_object is true the result is tagged as as
+  // a heap object. All registers are clobbered also when control
+  // continues at the gc_required label.
   void AllocateInNewSpace(int object_size,
                           Register result,
                           Register scratch1,
@@ -533,6 +622,7 @@ class MacroAssembler: public Assembler {
 
   // Call a runtime routine.
   void CallRuntime(Runtime::Function* f, int num_arguments);
+  void CallRuntimeSaveDoubles(Runtime::FunctionId id);
 
   // Convenience function: Same as above, but takes the fid instead.
   void CallRuntime(Runtime::FunctionId fid, int num_arguments);
@@ -576,7 +666,9 @@ class MacroAssembler: public Assembler {
 
   // Invoke specified builtin JavaScript function. Adds an entry to
   // the unresolved list if the name does not resolve.
-  void InvokeBuiltin(Builtins::JavaScript id, InvokeJSFlags flags);
+  void InvokeBuiltin(Builtins::JavaScript id,
+                     InvokeJSFlags flags,
+                     PostCallGenerator* post_call_generator = NULL);
 
   // Store the code object for the given builtin in the target register and
   // setup the function in r1.
@@ -622,6 +714,24 @@ class MacroAssembler: public Assembler {
 
   // ---------------------------------------------------------------------------
   // Smi utilities
+
+  void SmiTag(Register reg, SBit s = LeaveCC) {
+    add(reg, reg, Operand(reg), s);
+  }
+
+  // Try to convert int32 to smi. If the value is to large, preserve
+  // the original value and jump to not_a_smi. Destroys scratch and
+  // sets flags.
+  void TrySmiTag(Register reg, Label* not_a_smi, Register scratch) {
+    mov(scratch, reg);
+    SmiTag(scratch, SetCC);
+    b(vs, not_a_smi);
+    mov(reg, scratch);
+  }
+
+  void SmiUntag(Register reg) {
+    mov(reg, Operand(reg, ASR, kSmiTagSize));
+  }
 
   // Jump if either of the registers contain a non-smi.
   void JumpIfNotBothSmi(Register reg1, Register reg2, Label* on_not_both_smi);
@@ -676,7 +786,8 @@ class MacroAssembler: public Assembler {
                       Handle<Code> code_constant,
                       Register code_reg,
                       Label* done,
-                      InvokeFlag flag);
+                      InvokeFlag flag,
+                      PostCallGenerator* post_call_generator = NULL);
 
   // Activation support.
   void EnterFrame(StackFrame::Type type);
@@ -724,8 +835,29 @@ class CodePatcher {
 #endif  // ENABLE_DEBUGGER_SUPPORT
 
 
+// Helper class for generating code or data associated with the code
+// right after a call instruction. As an example this can be used to
+// generate safepoint data after calls for crankshaft.
+class PostCallGenerator {
+ public:
+  PostCallGenerator() { }
+  virtual ~PostCallGenerator() { }
+  virtual void Generate() = 0;
+};
+
+
 // -----------------------------------------------------------------------------
 // Static helper functions.
+
+static MemOperand ContextOperand(Register context, int index) {
+  return MemOperand(context, Context::SlotOffset(index));
+}
+
+
+static inline MemOperand GlobalObjectOperand()  {
+  return ContextOperand(cp, Context::GLOBAL_INDEX);
+}
+
 
 #ifdef GENERATED_CODE_COVERAGE
 #define CODE_COVERAGE_STRINGIFY(x) #x

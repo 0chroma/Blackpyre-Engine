@@ -1533,9 +1533,9 @@ FrameMirror.prototype.scope = function(index) {
 };
 
 
-FrameMirror.prototype.evaluate = function(source, disable_break) {
+FrameMirror.prototype.evaluate = function(source, disable_break, opt_context_object) {
   var result = %DebugEvaluate(this.break_id_, this.details_.frameId(),
-                              source, Boolean(disable_break));
+                              source, Boolean(disable_break), opt_context_object);
   return MakeMirror(result);
 };
 
@@ -2369,7 +2369,7 @@ function NumberToJSON_(value) {
   if (isNaN(value)) {
     return 'NaN';
   }
-  if (!isFinite(value)) {
+  if (!NUMBER_IS_FINITE(value)) {
     if (value > 0) {
       return 'Infinity';
     } else {

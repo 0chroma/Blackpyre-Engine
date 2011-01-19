@@ -1,0 +1,22 @@
+The v8-juice plugins are stored in a separate source repository,
+which can be browsed here:
+
+http://code.google.com/p/v8-juice/source/browse/extra-plugins
+
+Or checked out with subversion:
+
+
+svn checkout http://v8-juice.googlecode.com/svn/extra-plugins/ 
+
+Each plugin may have its own licensing terms and requirements,
+e.g. 3rd-party libraries.
+
+To build them, you need to have 'libv8-juice-config' in your PATH
+(it gets installed with v8-juice) or you'll need to tweak
+plugin_template.make to suit your setup.
+
+After that is done, simply:
+
+   cd src/PluginName
+   make && make install
+

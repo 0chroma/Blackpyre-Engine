@@ -28,6 +28,8 @@
 #ifndef V8_TOKEN_H_
 #define V8_TOKEN_H_
 
+#include "checks.h"
+
 namespace v8 {
 namespace internal {
 
@@ -215,7 +217,7 @@ class Token {
   // Returns a string corresponding to the C++ token name
   // (e.g. "LT" for the token LT).
   static const char* Name(Value tok) {
-    ASSERT(0 <= tok && tok < NUM_TOKENS);
+    ASSERT(tok < NUM_TOKENS);  // tok is unsigned
     return name_[tok];
   }
 
@@ -234,6 +236,40 @@ class Token {
 
   static bool IsCompareOp(Value op) {
     return EQ <= op && op <= IN;
+  }
+
+  static bool IsOrderedCompareOp(Value op) {
+    return op == LT || op == LTE || op == GT || op == GTE;
+  }
+
+  static Value NegateCompareOp(Value op) {
+    ASSERT(IsCompareOp(op));
+    switch (op) {
+      case EQ: return NE;
+      case NE: return EQ;
+      case EQ_STRICT: return NE_STRICT;
+      case LT: return GTE;
+      case GT: return LTE;
+      case LTE: return GT;
+      case GTE: return LT;
+      default:
+        return op;
+    }
+  }
+
+  static Value InvertCompareOp(Value op) {
+    ASSERT(IsCompareOp(op));
+    switch (op) {
+      case EQ: return NE;
+      case NE: return EQ;
+      case EQ_STRICT: return NE_STRICT;
+      case LT: return GT;
+      case GT: return LT;
+      case LTE: return GTE;
+      case GTE: return LTE;
+      default:
+        return op;
+    }
   }
 
   static bool IsBitOp(Value op) {
@@ -256,14 +292,14 @@ class Token {
   // (.e., "<" for the token LT) or NULL if the token doesn't
   // have a (unique) string (e.g. an IDENTIFIER).
   static const char* String(Value tok) {
-    ASSERT(0 <= tok && tok < NUM_TOKENS);
+    ASSERT(tok < NUM_TOKENS);  // tok is unsigned.
     return string_[tok];
   }
 
   // Returns the precedence > 0 for binary and compare
   // operators; returns 0 otherwise.
   static int Precedence(Value tok) {
-    ASSERT(0 <= tok && tok < NUM_TOKENS);
+    ASSERT(tok < NUM_TOKENS);  // tok is unsigned.
     return precedence_[tok];
   }
 

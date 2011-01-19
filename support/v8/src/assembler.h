@@ -38,10 +38,21 @@
 #include "runtime.h"
 #include "top.h"
 #include "token.h"
-#include "objects.h"
 
 namespace v8 {
 namespace internal {
+
+
+// -----------------------------------------------------------------------------
+// Common double constants.
+
+class DoubleConstant: public AllStatic {
+ public:
+  static const double min_int;
+  static const double one_half;
+  static const double minus_zero;
+  static const double negative_infinity;
+};
 
 
 // -----------------------------------------------------------------------------
@@ -174,6 +185,8 @@ class RelocInfo BASE_EMBEDDED {
     CODE_TARGET,  // Code target which is not any of the above.
     EMBEDDED_OBJECT,
 
+    GLOBAL_PROPERTY_CELL,
+
     // Everything after runtime_entry (inclusive) is not GC'ed.
     RUNTIME_ENTRY,
     JS_RETURN,  // Marks start of the ExitJSFrame code.
@@ -254,6 +267,10 @@ class RelocInfo BASE_EMBEDDED {
   INLINE(Handle<Object> target_object_handle(Assembler* origin));
   INLINE(Object** target_object_address());
   INLINE(void set_target_object(Object* target));
+  INLINE(JSGlobalPropertyCell* target_cell());
+  INLINE(Handle<JSGlobalPropertyCell> target_cell_handle());
+  INLINE(void set_target_cell(JSGlobalPropertyCell* cell));
+
 
   // Read the address of the word containing the target_address in an
   // instruction stream.  What this means exactly is architecture-independent.
@@ -306,7 +323,7 @@ class RelocInfo BASE_EMBEDDED {
 #ifdef ENABLE_DISASSEMBLER
   // Printing
   static const char* RelocModeName(Mode rmode);
-  void Print();
+  void Print(FILE* out);
 #endif  // ENABLE_DISASSEMBLER
 #ifdef DEBUG
   // Debugging
@@ -419,7 +436,7 @@ class RelocIterator: public Malloced {
   // If the given mode is wanted, set it in rinfo_ and return true.
   // Else return false. Used for efficiently skipping unwanted modes.
   bool SetMode(RelocInfo::Mode mode) {
-    return (mode_mask_ & 1 << mode) ? (rinfo_.rmode_ = mode, true) : false;
+    return (mode_mask_ & (1 << mode)) ? (rinfo_.rmode_ = mode, true) : false;
   }
 
   byte* pos_;
@@ -484,12 +501,20 @@ class ExternalReference BASE_EMBEDDED {
   static ExternalReference transcendental_cache_array_address();
   static ExternalReference delete_handle_scope_extensions();
 
+  // Deoptimization support.
+  static ExternalReference new_deoptimizer_function();
+  static ExternalReference compute_output_frames_function();
+  static ExternalReference global_contexts_list();
+
   // Static data in the keyed lookup cache.
   static ExternalReference keyed_lookup_cache_keys();
   static ExternalReference keyed_lookup_cache_field_offsets();
 
   // Static variable Factory::the_hole_value.location()
   static ExternalReference the_hole_value_location();
+
+  // Static variable Factory::arguments_marker.location()
+  static ExternalReference arguments_marker_location();
 
   // Static variable Heap::roots_address()
   static ExternalReference roots_address();
@@ -519,12 +544,20 @@ class ExternalReference BASE_EMBEDDED {
 
   static ExternalReference double_fp_operation(Token::Value operation);
   static ExternalReference compare_doubles();
+  static ExternalReference power_double_double_function();
+  static ExternalReference power_double_int_function();
 
   static ExternalReference handle_scope_next_address();
   static ExternalReference handle_scope_limit_address();
   static ExternalReference handle_scope_level_address();
 
   static ExternalReference scheduled_exception_address();
+
+  // Static variables containing common double constants.
+  static ExternalReference address_of_min_int();
+  static ExternalReference address_of_one_half();
+  static ExternalReference address_of_minus_zero();
+  static ExternalReference address_of_negative_infinity();
 
   Address address() const {return reinterpret_cast<Address>(address_);}
 
@@ -585,6 +618,71 @@ class ExternalReference BASE_EMBEDDED {
 
 
 // -----------------------------------------------------------------------------
+// Position recording support
+
+struct PositionState {
+  PositionState() : current_position(RelocInfo::kNoPosition),
+                    written_position(RelocInfo::kNoPosition),
+                    current_statement_position(RelocInfo::kNoPosition),
+                    written_statement_position(RelocInfo::kNoPosition) {}
+
+  int current_position;
+  int written_position;
+
+  int current_statement_position;
+  int written_statement_position;
+};
+
+
+class PositionsRecorder BASE_EMBEDDED {
+ public:
+  explicit PositionsRecorder(Assembler* assembler)
+      : assembler_(assembler) {}
+
+  // Set current position to pos.
+  void RecordPosition(int pos);
+
+  // Set current statement position to pos.
+  void RecordStatementPosition(int pos);
+
+  // Write recorded positions to relocation information.
+  bool WriteRecordedPositions();
+
+  int current_position() const { return state_.current_position; }
+
+  int current_statement_position() const {
+    return state_.current_statement_position;
+  }
+
+ private:
+  Assembler* assembler_;
+  PositionState state_;
+
+  friend class PreservePositionScope;
+
+  DISALLOW_COPY_AND_ASSIGN(PositionsRecorder);
+};
+
+
+class PreservePositionScope BASE_EMBEDDED {
+ public:
+  explicit PreservePositionScope(PositionsRecorder* positions_recorder)
+      : positions_recorder_(positions_recorder),
+        saved_state_(positions_recorder->state_) {}
+
+  ~PreservePositionScope() {
+    positions_recorder_->state_ = saved_state_;
+  }
+
+ private:
+  PositionsRecorder* positions_recorder_;
+  const PositionState saved_state_;
+
+  DISALLOW_COPY_AND_ASSIGN(PreservePositionScope);
+};
+
+
+// -----------------------------------------------------------------------------
 // Utility functions
 
 static inline bool is_intn(int x, int n)  {
@@ -620,6 +718,10 @@ static inline int NumberOfBitsSet(uint32_t x) {
   }
   return num_bits_set;
 }
+
+// Computes pow(x, y) with the special cases in the spec for Math.pow.
+double power_double_int(double x, int y);
+double power_double_double(double x, double y);
 
 } }  // namespace v8::internal
 

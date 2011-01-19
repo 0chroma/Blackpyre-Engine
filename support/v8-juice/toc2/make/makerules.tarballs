@@ -1,0 +1,57 @@
+#!/bin/sh
+# Creates makefile rules for use with TARBALL.make
+
+test 0 = ${#@} && {
+        echo "usage: $0 target1 [... targetN]"
+        exit 1
+}
+thisapp="\$(toc2.dirs.makefiles)/makerules.tarballs"
+filters_makefile="\$(toc2.dirs.makefiles)/tarballs.make"
+
+cat <<EOF
+############################## tarballs rules:
+tarballs.chdir ?= .
+tarballs.flags ?=# intentionally empty
+EOF
+
+for t in "$@"; do
+    cat <<EOF
+########################################################################
+# Begin tarballs rule '${t}':
+ifeq (,\$(${t}.tarball))
+    \$(error ${t}.tarball must be set to an output file name!)
+endif
+
+toc2.tarballs.clean_files += \$(${t}.tarball)
+
+ifeq (,\$(${t}.tarball.files))
+    \$(error ${t}.tarball.files must be set to a list of file/directory patterns!)
+endif
+
+${t}.tarball.chdir ?= \$(tarballs.chdir)
+${t}.tarball.flags ?= \$(tarballs.flags)
+
+.PHONY: tarball-${t}
+tarball-${t}: \$(${t}.tarball)
+\$(${t}.tarball.files):
+\$(${t}.tarball): \$(${t}.tarball.files) \$(toc2.tarballs.makefile) $0
+	@cd \$(${t}.tarball.chdir) || exit; \$(call toc2.call.setx-unless-quiet,"Creating tarball: \$(${t}.tarball) ..."); \
+	    \$(toc2.bins.tar) cf \$(${t}.tarball) \$(${t}.tarball.flags) \$(${t}.tarball.files)
+tarballs: tarball-${t}
+# end tarballs rule '${t}':
+########################################################################
+EOF
+done
+cat <<EOF
+tarballs: tarballs-post
+tarballs-post:
+# Run the tarballs target to generate all tarballs.
+# Implement a tarballs-post target to run post-tarball rules.
+# To implement pre-tarball rules add these BEFORE including
+# tarballs.make:
+#   tarball-MyTarBallName: myrule
+#   tarballs: myrule
+# The problem is that there is no simple way to implement post-tarball
+# rules if you run 'make MyTarBallName.tar'.
+############################## end tarballs rules
+EOF

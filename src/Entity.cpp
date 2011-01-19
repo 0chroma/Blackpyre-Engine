@@ -21,18 +21,16 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
+#include <string>
 
 //Entity::objectmanagerId = 0;
 
-Entity::Entity(float x, float y, float sx, float sy, float a, const char *sp = "")
+Entity::Entity(float x, float y, float sx, float sy, float a, std::string sp)
     : GameObject(x,y,sx,sy,a){
     objectmanagerId = 0;
     sprite = sp;
-    if(sp){
-        ResourceManager *resourceManager = Global::getInstance()->resourceManager;
-        texture = resourceManager->loadTexture(sprite);
-    }
+    ResourceManager *resourceManager = Global::getInstance()->resourceManager;
+    texture = resourceManager->loadTexture(sprite.c_str());
 }
 
 Entity::~Entity(){

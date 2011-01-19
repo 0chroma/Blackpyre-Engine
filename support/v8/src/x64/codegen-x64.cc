@@ -104,12 +104,12 @@ void VirtualFrameRuntimeCallHelper::AfterCall(MacroAssembler* masm) const {
 }
 
 
-void ICRuntimeCallHelper::BeforeCall(MacroAssembler* masm) const {
+void StubRuntimeCallHelper::BeforeCall(MacroAssembler* masm) const {
   masm->EnterInternalFrame();
 }
 
 
-void ICRuntimeCallHelper::AfterCall(MacroAssembler* masm) const {
+void StubRuntimeCallHelper::AfterCall(MacroAssembler* masm) const {
   masm->LeaveInternalFrame();
 }
 
@@ -568,10 +568,10 @@ void CodeGenerator::Load(Expression* expr) {
 
 void CodeGenerator::LoadGlobal() {
   if (in_spilled_code()) {
-    frame_->EmitPush(GlobalObject());
+    frame_->EmitPush(GlobalObjectOperand());
   } else {
     Result temp = allocator_->Allocate();
-    __ movq(temp.reg(), GlobalObject());
+    __ movq(temp.reg(), GlobalObjectOperand());
     frame_->Push(&temp);
   }
 }
@@ -580,7 +580,7 @@ void CodeGenerator::LoadGlobal() {
 void CodeGenerator::LoadGlobalReceiver() {
   Result temp = allocator_->Allocate();
   Register reg = temp.reg();
-  __ movq(reg, GlobalObject());
+  __ movq(reg, GlobalObjectOperand());
   __ movq(reg, FieldOperand(reg, GlobalObject::kGlobalReceiverOffset));
   frame_->Push(&temp);
 }
@@ -627,10 +627,10 @@ Result CodeGenerator::StoreArgumentsObject(bool initial) {
 
   Comment cmnt(masm_, "[ store arguments object");
   if (mode == LAZY_ARGUMENTS_ALLOCATION && initial) {
-    // When using lazy arguments allocation, we store the hole value
+    // When using lazy arguments allocation, we store the arguments marker value
     // as a sentinel indicating that the arguments object hasn't been
     // allocated yet.
-    frame_->Push(Factory::the_hole_value());
+    frame_->Push(Factory::arguments_marker());
   } else {
     ArgumentsAccessStub stub(ArgumentsAccessStub::NEW_OBJECT);
     frame_->PushFunction();
@@ -655,9 +655,9 @@ Result CodeGenerator::StoreArgumentsObject(bool initial) {
     if (probe.is_constant()) {
       // We have to skip updating the arguments object if it has
       // been assigned a proper value.
-      skip_arguments = !probe.handle()->IsTheHole();
+      skip_arguments = !probe.handle()->IsArgumentsMarker();
     } else {
-      __ CompareRoot(probe.reg(), Heap::kTheHoleValueRootIndex);
+      __ CompareRoot(probe.reg(), Heap::kArgumentsMarkerRootIndex);
       probe.Unuse();
       done.Branch(not_equal);
     }
@@ -2516,9 +2516,9 @@ void CodeGenerator::CallApplyLazy(Expression* applicand,
     Label slow, done;
     bool try_lazy = true;
     if (probe.is_constant()) {
-      try_lazy = probe.handle()->IsTheHole();
+      try_lazy = probe.handle()->IsArgumentsMarker();
     } else {
-      __ CompareRoot(probe.reg(), Heap::kTheHoleValueRootIndex);
+      __ CompareRoot(probe.reg(), Heap::kArgumentsMarkerRootIndex);
       probe.Unuse();
       __ j(not_equal, &slow);
     }
@@ -2956,7 +2956,7 @@ void CodeGenerator::VisitReturnStatement(ReturnStatement* node) {
   CodeForStatementPosition(node);
   Load(node->expression());
   Result return_value = frame_->Pop();
-  masm()->WriteRecordedPositions();
+  masm()->positions_recorder()->WriteRecordedPositions();
   if (function_return_is_shadowed_) {
     function_return_.Jump(&return_value);
   } else {
@@ -4244,7 +4244,8 @@ void CodeGenerator::VisitDebuggerStatement(DebuggerStatement* node) {
 
 
 void CodeGenerator::InstantiateFunction(
-    Handle<SharedFunctionInfo> function_info) {
+    Handle<SharedFunctionInfo> function_info,
+    bool pretenure) {
   // The inevitable call will sync frame elements to memory anyway, so
   // we do it eagerly to allow us to push the arguments directly into
   // place.
@@ -4252,7 +4253,9 @@ void CodeGenerator::InstantiateFunction(
 
   // Use the fast case closure allocation code that allocates in new
   // space for nested functions that don't need literals cloning.
-  if (scope()->is_function_scope() && function_info->num_literals() == 0) {
+  if (scope()->is_function_scope() &&
+      function_info->num_literals() == 0 &&
+      !pretenure) {
     FastNewClosureStub stub;
     frame_->Push(function_info);
     Result answer = frame_->CallStub(&stub, 1);
@@ -4262,7 +4265,10 @@ void CodeGenerator::InstantiateFunction(
     // shared function info.
     frame_->EmitPush(rsi);
     frame_->EmitPush(function_info);
-    Result result = frame_->CallRuntime(Runtime::kNewClosure, 2);
+    frame_->EmitPush(pretenure
+                     ? Factory::true_value()
+                     : Factory::false_value());
+    Result result = frame_->CallRuntime(Runtime::kNewClosure, 3);
     frame_->Push(&result);
   }
 }
@@ -4279,14 +4285,14 @@ void CodeGenerator::VisitFunctionLiteral(FunctionLiteral* node) {
     SetStackOverflow();
     return;
   }
-  InstantiateFunction(function_info);
+  InstantiateFunction(function_info, node->pretenure());
 }
 
 
 void CodeGenerator::VisitSharedFunctionInfoLiteral(
     SharedFunctionInfoLiteral* node) {
   Comment cmnt(masm_, "[ SharedFunctionInfoLiteral");
-  InstantiateFunction(node->shared_function_info());
+  InstantiateFunction(node->shared_function_info(), false);
 }
 
 
@@ -4411,7 +4417,7 @@ void CodeGenerator::LoadFromSlotCheckForArguments(Slot* slot,
   // If the loaded value is a constant, we know if the arguments
   // object has been lazily loaded yet.
   if (value.is_constant()) {
-    if (value.handle()->IsTheHole()) {
+    if (value.handle()->IsArgumentsMarker()) {
       Result arguments = StoreArgumentsObject(false);
       frame_->Push(&arguments);
     } else {
@@ -4424,7 +4430,7 @@ void CodeGenerator::LoadFromSlotCheckForArguments(Slot* slot,
   // indicates that we haven't loaded the arguments object yet, we
   // need to do it now.
   JumpTarget exit;
-  __ CompareRoot(value.reg(), Heap::kTheHoleValueRootIndex);
+  __ CompareRoot(value.reg(), Heap::kArgumentsMarkerRootIndex);
   frame_->Push(&value);
   exit.Branch(not_equal);
   Result arguments = StoreArgumentsObject(false);
@@ -5592,6 +5598,18 @@ void CodeGenerator::VisitCall(Call* node) {
         // Push the receiver onto the frame.
         Load(property->obj());
 
+        // Load the name of the function.
+        Load(property->key());
+
+        // Swap the name of the function and the receiver on the stack to follow
+        // the calling convention for call ICs.
+        Result key = frame_->Pop();
+        Result receiver = frame_->Pop();
+        frame_->Push(&key);
+        frame_->Push(&receiver);
+        key.Unuse();
+        receiver.Unuse();
+
         // Load the arguments.
         int arg_count = args->length();
         for (int i = 0; i < arg_count; i++) {
@@ -5599,14 +5617,13 @@ void CodeGenerator::VisitCall(Call* node) {
           frame_->SpillTop();
         }
 
-        // Load the name of the function.
-        Load(property->key());
-
-        // Call the IC initialization code.
+        // Place the key on top of stack and call the IC initialization code.
+        frame_->PushElementAt(arg_count + 1);
         CodeForSourcePosition(node->position());
         Result result = frame_->CallKeyedCallIC(RelocInfo::CODE_TARGET,
                                                 arg_count,
                                                 loop_nesting());
+        frame_->Drop();  // Drop the key still on the stack.
         frame_->RestoreContextRegister();
         frame_->Push(&result);
       }
@@ -6062,7 +6079,7 @@ class DeferredIsStringWrapperSafeForDefaultValueOf : public DeferredCode {
     __ movq(scratch2_,
             FieldOperand(scratch2_, GlobalObject::kGlobalContextOffset));
     __ cmpq(scratch1_,
-            CodeGenerator::ContextOperand(
+            ContextOperand(
                 scratch2_, Context::STRING_FUNCTION_PROTOTYPE_MAP_INDEX));
     __ j(not_equal, &false_result);
     // Set the bit in the map to indicate that it has been checked safe for
@@ -6473,94 +6490,13 @@ void CodeGenerator::GenerateRegExpExec(ZoneList<Expression*>* args) {
 
 
 void CodeGenerator::GenerateRegExpConstructResult(ZoneList<Expression*>* args) {
-  // No stub. This code only occurs a few times in regexp.js.
-  const int kMaxInlineLength = 100;
   ASSERT_EQ(3, args->length());
   Load(args->at(0));  // Size of array, smi.
   Load(args->at(1));  // "index" property value.
   Load(args->at(2));  // "input" property value.
-  {
-    VirtualFrame::SpilledScope spilled_scope;
-
-    Label slowcase;
-    Label done;
-    __ movq(r8, Operand(rsp, kPointerSize * 2));
-    __ JumpIfNotSmi(r8, &slowcase);
-    __ SmiToInteger32(rbx, r8);
-    __ cmpl(rbx, Immediate(kMaxInlineLength));
-    __ j(above, &slowcase);
-    // Smi-tagging is equivalent to multiplying by 2.
-    STATIC_ASSERT(kSmiTag == 0);
-    STATIC_ASSERT(kSmiTagSize == 1);
-    // Allocate RegExpResult followed by FixedArray with size in ebx.
-    // JSArray:   [Map][empty properties][Elements][Length-smi][index][input]
-    // Elements:  [Map][Length][..elements..]
-    __ AllocateInNewSpace(JSRegExpResult::kSize + FixedArray::kHeaderSize,
-                          times_pointer_size,
-                          rbx,  // In: Number of elements.
-                          rax,  // Out: Start of allocation (tagged).
-                          rcx,  // Out: End of allocation.
-                          rdx,  // Scratch register
-                          &slowcase,
-                          TAG_OBJECT);
-    // rax: Start of allocated area, object-tagged.
-    // rbx: Number of array elements as int32.
-    // r8: Number of array elements as smi.
-
-    // Set JSArray map to global.regexp_result_map().
-    __ movq(rdx, ContextOperand(rsi, Context::GLOBAL_INDEX));
-    __ movq(rdx, FieldOperand(rdx, GlobalObject::kGlobalContextOffset));
-    __ movq(rdx, ContextOperand(rdx, Context::REGEXP_RESULT_MAP_INDEX));
-    __ movq(FieldOperand(rax, HeapObject::kMapOffset), rdx);
-
-    // Set empty properties FixedArray.
-    __ Move(FieldOperand(rax, JSObject::kPropertiesOffset),
-            Factory::empty_fixed_array());
-
-    // Set elements to point to FixedArray allocated right after the JSArray.
-    __ lea(rcx, Operand(rax, JSRegExpResult::kSize));
-    __ movq(FieldOperand(rax, JSObject::kElementsOffset), rcx);
-
-    // Set input, index and length fields from arguments.
-    __ pop(FieldOperand(rax, JSRegExpResult::kInputOffset));
-    __ pop(FieldOperand(rax, JSRegExpResult::kIndexOffset));
-    __ lea(rsp, Operand(rsp, kPointerSize));
-    __ movq(FieldOperand(rax, JSArray::kLengthOffset), r8);
-
-    // Fill out the elements FixedArray.
-    // rax: JSArray.
-    // rcx: FixedArray.
-    // rbx: Number of elements in array as int32.
-
-    // Set map.
-    __ Move(FieldOperand(rcx, HeapObject::kMapOffset),
-            Factory::fixed_array_map());
-    // Set length.
-    __ Integer32ToSmi(rdx, rbx);
-    __ movq(FieldOperand(rcx, FixedArray::kLengthOffset), rdx);
-    // Fill contents of fixed-array with the-hole.
-    __ Move(rdx, Factory::the_hole_value());
-    __ lea(rcx, FieldOperand(rcx, FixedArray::kHeaderSize));
-    // Fill fixed array elements with hole.
-    // rax: JSArray.
-    // rbx: Number of elements in array that remains to be filled, as int32.
-    // rcx: Start of elements in FixedArray.
-    // rdx: the hole.
-    Label loop;
-    __ testl(rbx, rbx);
-    __ bind(&loop);
-    __ j(less_equal, &done);  // Jump if ecx is negative or zero.
-    __ subl(rbx, Immediate(1));
-    __ movq(Operand(rcx, rbx, times_pointer_size, 0), rdx);
-    __ jmp(&loop);
-
-    __ bind(&slowcase);
-    __ CallRuntime(Runtime::kRegExpConstructResult, 3);
-
-    __ bind(&done);
-  }
-  frame_->Forget(3);
-  frame_->Push(rax);
+  RegExpConstructResultStub stub;
+  Result result = frame_->CallStub(&stub, 3);
+  frame_->Push(&result);
 }
 
 
@@ -6846,6 +6782,13 @@ void CodeGenerator::GenerateSwapElements(ZoneList<Expression*>* args) {
   Condition both_smi = masm()->CheckBothSmi(index1.reg(), index2.reg());
   deferred->Branch(NegateCondition(both_smi));
 
+  // Check that both indices are valid.
+  __ movq(tmp2.reg(), FieldOperand(object.reg(), JSArray::kLengthOffset));
+  __ SmiCompare(tmp2.reg(), index1.reg());
+  deferred->Branch(below_equal);
+  __ SmiCompare(tmp2.reg(), index2.reg());
+  deferred->Branch(below_equal);
+
   // Bring addresses into index1 and index2.
   __ SmiToInteger32(index1.reg(), index1.reg());
   __ lea(index1.reg(), FieldOperand(tmp1.reg(),
@@ -6870,12 +6813,8 @@ void CodeGenerator::GenerateSwapElements(ZoneList<Expression*>* args) {
   // (or them and test against Smi mask.)
 
   __ movq(tmp2.reg(), tmp1.reg());
-  RecordWriteStub recordWrite1(tmp2.reg(), index1.reg(), object.reg());
-  __ CallStub(&recordWrite1);
-
-  RecordWriteStub recordWrite2(tmp1.reg(), index2.reg(), object.reg());
-  __ CallStub(&recordWrite2);
-
+  __ RecordWriteHelper(tmp1.reg(), index1.reg(), object.reg());
+  __ RecordWriteHelper(tmp2.reg(), index2.reg(), object.reg());
   __ bind(&done);
 
   deferred->BindExit();
@@ -7094,6 +7033,15 @@ void CodeGenerator::GenerateMathCos(ZoneList<Expression*>* args) {
 }
 
 
+void CodeGenerator::GenerateMathLog(ZoneList<Expression*>* args) {
+  ASSERT_EQ(args->length(), 1);
+  Load(args->at(0));
+  TranscendentalCacheStub stub(TranscendentalCache::LOG);
+  Result result = frame_->CallStub(&stub, 1);
+  frame_->Push(&result);
+}
+
+
 // Generates the Math.sqrt method. Please note - this function assumes that
 // the callsite has executed ToNumber on the argument.
 void CodeGenerator::GenerateMathSqrt(ZoneList<Expression*>* args) {
@@ -7206,6 +7154,11 @@ void CodeGenerator::GenerateGetCachedArrayIndex(ZoneList<Expression*>* args) {
 }
 
 
+void CodeGenerator::GenerateFastAsciiArrayJoin(ZoneList<Expression*>* args) {
+  frame_->Push(Factory::undefined_value());
+}
+
+
 void CodeGenerator::VisitCallRuntime(CallRuntime* node) {
   if (CheckForInlineRuntimeCall(node)) {
     return;
@@ -7219,7 +7172,7 @@ void CodeGenerator::VisitCallRuntime(CallRuntime* node) {
     // Push the builtins object found in the current global object.
     Result temp = allocator()->Allocate();
     ASSERT(temp.is_valid());
-    __ movq(temp.reg(), GlobalObject());
+    __ movq(temp.reg(), GlobalObjectOperand());
     __ movq(temp.reg(),
             FieldOperand(temp.reg(), GlobalObject::kBuiltinsOffset));
     frame_->Push(&temp);
@@ -7917,7 +7870,7 @@ void CodeGenerator::VisitCompareOperation(CompareOperation* node) {
     case Token::INSTANCEOF: {
       Load(left);
       Load(right);
-      InstanceofStub stub;
+      InstanceofStub stub(InstanceofStub::kNoFlags);
       Result answer = frame_->CallStub(&stub, 2);
       answer.ToRegister();
       __ testq(answer.reg(), answer.reg());
@@ -8854,11 +8807,6 @@ ModuloFunction CreateModuloFunction() {
 
 
 #undef __
-
-void RecordWriteStub::Generate(MacroAssembler* masm) {
-  masm->RecordWriteHelper(object_, addr_, scratch_);
-  masm->ret(0);
-}
 
 } }  // namespace v8::internal
 

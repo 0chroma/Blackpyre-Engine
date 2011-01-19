@@ -186,6 +186,10 @@ class Simulator {
   // ICache checking.
   static void FlushICache(void* start, size_t size);
 
+  // Returns true if pc register contains one of the 'special_values' defined
+  // below (bad_lr, end_sim_pc).
+  bool has_bad_pc() const;
+
  private:
   enum special_values {
     // Known bad pc value to ensure that the simulator does not execute
@@ -305,6 +309,9 @@ class Simulator {
   bool z_flag_FPSCR_;
   bool c_flag_FPSCR_;
   bool v_flag_FPSCR_;
+
+  // VFP rounding mode. See ARM DDI 0406B Page A2-29.
+  FPSCRRoundingModes FPSCR_rounding_mode_;
 
   // VFP FP exception flags architecture state.
   bool inv_op_vfp_flag_;
