@@ -13,7 +13,7 @@ endif
 all: $(PROG)
 
 $(PROG):	$(SRCS)
-	$(CC) $(CFLAGS) -o $(PROG) $(SRCS) $(LIBS) ../support/v8/libv8.a ../support/glpng/lib/libglpng.a -I../support/v8/include/ -I../support/glpng/include/
+	$(CC) $(CFLAGS) -o $(PROG) $(SRCS) $(LIBS) -L../support/v8/ -L../support/v8-juice/src/lib/juice/ ../support/glpng/lib/libglpng.a -I../support/v8/include/ -I../support/glpng/include/ -I../support/v8-juice/src/include/
 
 clean:
 	rm -f $(PROG)

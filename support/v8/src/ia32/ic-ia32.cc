@@ -33,7 +33,6 @@
 #include "ic-inl.h"
 #include "runtime.h"
 #include "stub-cache.h"
-#include "utils.h"
 
 namespace v8 {
 namespace internal {
@@ -711,7 +710,7 @@ void KeyedLoadIC::GenerateString(MacroAssembler* masm) {
   char_at_generator.GenerateFast(masm);
   __ ret(0);
 
-  ICRuntimeCallHelper call_helper;
+  StubRuntimeCallHelper call_helper;
   char_at_generator.GenerateSlow(masm, call_helper);
 
   __ bind(&miss);
@@ -1200,7 +1199,7 @@ void KeyedStoreIC::GenerateExternalArray(MacroAssembler* masm,
         break;
       case kExternalShortArray:
       case kExternalUnsignedShortArray:
-        __ xor_(ecx, Operand(ecx));
+        __ Set(ecx, Immediate(0));
         __ mov_w(Operand(edi, ebx, times_2, 0), ecx);
         break;
       case kExternalIntArray:
@@ -1219,9 +1218,6 @@ void KeyedStoreIC::GenerateExternalArray(MacroAssembler* masm,
   GenerateRuntimeSetProperty(masm);
 }
 
-
-// Defined in ic.cc.
-Object* CallIC_Miss(Arguments args);
 
 // The generated code does not accept smi keys.
 // The generated code falls through if both probes miss.
@@ -1568,9 +1564,6 @@ void KeyedCallIC::GenerateMiss(MacroAssembler* masm, int argc) {
 }
 
 
-// Defined in ic.cc.
-Object* LoadIC_Miss(Arguments args);
-
 void LoadIC::GenerateMegamorphic(MacroAssembler* masm) {
   // ----------- S t a t e -------------
   //  -- eax    : receiver
@@ -1630,16 +1623,15 @@ void LoadIC::GenerateMiss(MacroAssembler* masm) {
 }
 
 
-// One byte opcode for test eax,0xXXXXXXXX.
-static const byte kTestEaxByte = 0xA9;
-
 bool LoadIC::PatchInlinedLoad(Address address, Object* map, int offset) {
+  if (V8::UseCrankshaft()) return false;
+
   // The address of the instruction following the call.
   Address test_instruction_address =
       address + Assembler::kCallTargetAddressOffset;
   // If the instruction following the call is not a test eax, nothing
   // was inlined.
-  if (*test_instruction_address != kTestEaxByte) return false;
+  if (*test_instruction_address != Assembler::kTestEaxByte) return false;
 
   Address delta_address = test_instruction_address + 1;
   // The delta to the start of the map check instruction.
@@ -1683,6 +1675,8 @@ bool LoadIC::PatchInlinedContextualLoad(Address address,
                                         Object* map,
                                         Object* cell,
                                         bool is_dont_delete) {
+  if (V8::UseCrankshaft()) return false;
+
   // The address of the instruction following the call.
   Address mov_instruction_address =
       address + Assembler::kCallTargetAddressOffset;
@@ -1714,13 +1708,15 @@ bool LoadIC::PatchInlinedContextualLoad(Address address,
 
 
 bool StoreIC::PatchInlinedStore(Address address, Object* map, int offset) {
+  if (V8::UseCrankshaft()) return false;
+
   // The address of the instruction following the call.
   Address test_instruction_address =
       address + Assembler::kCallTargetAddressOffset;
 
   // If the instruction following the call is not a test eax, nothing
   // was inlined.
-  if (*test_instruction_address != kTestEaxByte) return false;
+  if (*test_instruction_address != Assembler::kTestEaxByte) return false;
 
   // Extract the encoded deltas from the test eax instruction.
   Address encoded_offsets_address = test_instruction_address + 1;
@@ -1760,11 +1756,13 @@ bool StoreIC::PatchInlinedStore(Address address, Object* map, int offset) {
 
 
 static bool PatchInlinedMapCheck(Address address, Object* map) {
+  if (V8::UseCrankshaft()) return false;
+
   Address test_instruction_address =
       address + Assembler::kCallTargetAddressOffset;
   // The keyed load has a fast inlined case if the IC call instruction
   // is immediately followed by a test instruction.
-  if (*test_instruction_address != kTestEaxByte) return false;
+  if (*test_instruction_address != Assembler::kTestEaxByte) return false;
 
   // Fetch the offset from the test instruction to the map cmp
   // instruction.  This offset is stored in the last 4 bytes of the 5
@@ -1789,10 +1787,6 @@ bool KeyedLoadIC::PatchInlinedLoad(Address address, Object* map) {
 bool KeyedStoreIC::PatchInlinedStore(Address address, Object* map) {
   return PatchInlinedMapCheck(address, map);
 }
-
-
-// Defined in ic.cc.
-Object* KeyedLoadIC_Miss(Arguments args);
 
 
 void KeyedLoadIC::GenerateMiss(MacroAssembler* masm) {
@@ -1960,8 +1954,23 @@ void StoreIC::GenerateNormal(MacroAssembler* masm) {
 }
 
 
-// Defined in ic.cc.
-Object* KeyedStoreIC_Miss(Arguments args);
+void StoreIC::GenerateGlobalProxy(MacroAssembler* masm) {
+  // ----------- S t a t e -------------
+  //  -- eax    : value
+  //  -- ecx    : name
+  //  -- edx    : receiver
+  //  -- esp[0] : return address
+  // -----------------------------------
+  __ pop(ebx);
+  __ push(edx);
+  __ push(ecx);
+  __ push(eax);
+  __ push(ebx);
+
+  // Do tail-call to runtime routine.
+  __ TailCallRuntime(Runtime::kSetProperty, 3, 1);
+}
+
 
 void KeyedStoreIC::GenerateRuntimeSetProperty(MacroAssembler* masm) {
   // ----------- S t a t e -------------
@@ -2001,7 +2010,105 @@ void KeyedStoreIC::GenerateMiss(MacroAssembler* masm) {
   __ TailCallExternalReference(ref, 3, 1);
 }
 
+
 #undef __
+
+
+Condition CompareIC::ComputeCondition(Token::Value op) {
+  switch (op) {
+    case Token::EQ_STRICT:
+    case Token::EQ:
+      return equal;
+    case Token::LT:
+      return less;
+    case Token::GT:
+      // Reverse left and right operands to obtain ECMA-262 conversion order.
+      return less;
+    case Token::LTE:
+      // Reverse left and right operands to obtain ECMA-262 conversion order.
+      return greater_equal;
+    case Token::GTE:
+      return greater_equal;
+    default:
+      UNREACHABLE();
+      return no_condition;
+  }
+}
+
+
+static bool HasInlinedSmiCode(Address address) {
+  // The address of the instruction following the call.
+  Address test_instruction_address =
+      address + Assembler::kCallTargetAddressOffset;
+
+  // If the instruction following the call is not a test al, nothing
+  // was inlined.
+  return *test_instruction_address == Assembler::kTestAlByte;
+}
+
+
+void CompareIC::UpdateCaches(Handle<Object> x, Handle<Object> y) {
+  HandleScope scope;
+  Handle<Code> rewritten;
+  State previous_state = GetState();
+
+  State state = TargetState(previous_state, HasInlinedSmiCode(address()), x, y);
+  if (state == GENERIC) {
+    CompareStub stub(GetCondition(), strict(), NO_COMPARE_FLAGS);
+    rewritten = stub.GetCode();
+  } else {
+    ICCompareStub stub(op_, state);
+    rewritten = stub.GetCode();
+  }
+  set_target(*rewritten);
+
+#ifdef DEBUG
+  if (FLAG_trace_ic) {
+    PrintF("[CompareIC (%s->%s)#%s]\n",
+           GetStateName(previous_state),
+           GetStateName(state),
+           Token::Name(op_));
+  }
+#endif
+
+  // Activate inlined smi code.
+  if (previous_state == UNINITIALIZED) {
+    PatchInlinedSmiCode(address());
+  }
+}
+
+
+void PatchInlinedSmiCode(Address address) {
+  // The address of the instruction following the call.
+  Address test_instruction_address =
+      address + Assembler::kCallTargetAddressOffset;
+
+  // If the instruction following the call is not a test al, nothing
+  // was inlined.
+  if (*test_instruction_address != Assembler::kTestAlByte) {
+    ASSERT(*test_instruction_address == Assembler::kNopByte);
+    return;
+  }
+
+  Address delta_address = test_instruction_address + 1;
+  // The delta to the start of the map check instruction and the
+  // condition code uses at the patched jump.
+  int8_t delta = *reinterpret_cast<int8_t*>(delta_address);
+  if (FLAG_trace_ic) {
+    PrintF("[  patching ic at %p, test=%p, delta=%d\n",
+           address, test_instruction_address, delta);
+  }
+
+  // Patch with a short conditional jump. There must be a
+  // short jump-if-carry/not-carry at this position.
+  Address jmp_address = test_instruction_address - delta;
+  ASSERT(*jmp_address == Assembler::kJncShortOpcode ||
+         *jmp_address == Assembler::kJcShortOpcode);
+  Condition cc = *jmp_address == Assembler::kJncShortOpcode
+      ? not_zero
+      : zero;
+  *jmp_address = static_cast<byte>(Assembler::kJccShortPrefix | cc);
+}
 
 
 } }  // namespace v8::internal

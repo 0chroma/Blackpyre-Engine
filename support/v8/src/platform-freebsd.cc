@@ -53,6 +53,7 @@
 #include "v8.h"
 
 #include "platform.h"
+#include "vm-state-inl.h"
 
 
 namespace v8 {
@@ -410,6 +411,12 @@ bool ThreadHandle::IsValid() const {
 
 
 Thread::Thread() : ThreadHandle(ThreadHandle::INVALID) {
+  set_name("v8:<unknown>");
+}
+
+
+Thread::Thread(const char* name) : ThreadHandle(ThreadHandle::INVALID) {
+  set_names(name);
 }
 
 
@@ -426,6 +433,12 @@ static void* ThreadEntry(void* arg) {
   ASSERT(thread->IsValid());
   thread->Run();
   return NULL;
+}
+
+
+void Thread::set_name(const char* name) {
+  strncpy(name_, name, sizeof(name_));
+  name_[sizeof(name_) - 1] = '\0';
 }
 
 
@@ -616,11 +629,11 @@ class Sampler::PlatformData : public Malloced {
 };
 
 
-Sampler::Sampler(int interval, bool profiling)
+Sampler::Sampler(int interval)
     : interval_(interval),
-      profiling_(profiling),
-      synchronous_(profiling),
-      active_(false) {
+      profiling_(false),
+      active_(false),
+      samples_taken_(0) {
   data_ = new PlatformData();
 }
 

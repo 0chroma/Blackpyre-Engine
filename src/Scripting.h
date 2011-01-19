@@ -11,6 +11,8 @@
 #ifndef Scripting_h
 #define Scripting_h
 
+class Entity;
+
 class Scripting {
     public:
         Scripting();
@@ -29,7 +31,9 @@ class Scripting {
         static Scripting *instance;
         
         static v8::Handle<v8::Context> context;
-
+        
+        static v8::Handle<v8::Object> setupEntityClass(v8::Handle<v8::Object> dest);
+        
         static v8::Handle<v8::ObjectTemplate> getObjectTemplate();
         static v8::Handle<v8::String> ReadFile(const char* name);
         static bool ExecuteString(v8::Handle<v8::String> source, v8::Handle<v8::Value> name, bool print_result, bool report_exceptions);

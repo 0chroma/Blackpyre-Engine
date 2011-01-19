@@ -1,0 +1,74 @@
+#!/do/not/make
+#^^^ only to help emacs out.
+
+package.dist_files += $(wildcard *.cpp *.cc *.c *.h *.hpp *.at)
+package.clean_files += $(wildcard *.o *~)
+
+# Debian policy requires that DLLs be built with -fPIC:
+CXXFLAGS += -fPIC
+CFLAGS += -fPIC # won't link on AMD64 w/o this.
+
+v8juice.builds.libv8juice := $(toc2.top_srcdir)/src/lib/juice
+v8juice.builds.shell := $(toc2.top_srcdir)/src/client/shell/v8-juice-shell
+
+package.install.package_headers.dest := $(prefix)/include/v8/juice
+package.install.headers.dest = $(package.install.package_headers.dest)
+package.install.package_dlls.dest := $(prefix)/lib/v8/juice/$(package.version)# use this one for plugin DLLs
+
+############################################################
+# we fudge the linker args for clients which live in this source tree,
+# so that we link against the in-tree libs insead of a previously
+# installed copy somewhere else.
+#  $(LIBV8JUICE_CLIENT_LDADD)
+LIBV8JUICE_CLIENT_INTREE_LDADD = \
+				-L$(toc2.top_srcdir)/src/lib/juice \
+				-lv8-juice \
+				$(LD_LDFLAGS)
+############################################################
+
+########################################################################
+# Reminder: for the INCLUDES we do this $(shell) hackery so that emacs'
+# jump-to-error mode can find the files. It has trouble with the
+# relative paths.
+INCLUDES := -I. -I$(shell cd $(toc2.top_srcdir); pwd)/src/include $(INCLUDES)
+CPPFLAGS += $(INCLUDES) $(V8_CPPFLAGS)
+
+ifneq (,$(wildcard *.cpp *.hpp *.cc *.h))
+  include $(toc2.dirs.makefiles)/toc2-c.make
+endif
+
+
+########################################################################
+# toc2's deps generation is a bit broken, so we'll use this instead...
+# To disable deps generation, set toc2.c.USE_MKDEPS=0
+toc2.c.USE_MKDEPS := 1
+#$(warning toc2.c.USE_MKDEPS=$(toc2.c.USE_MKDEPS));
+ifeq (1,$(toc2.c.USE_MKDEPS))
+toc2.c.CISH_SOURCES ?= $(wildcard *.cpp *.c *.c++ *.cc *.h *.hpp *.h++ *.hh)
+#$(warning toc2.c.CISH_SOURCES=$(toc2.c.CISH_SOURCES))
+ifneq (,$(toc2.c.CISH_SOURCES))
+toc2.c.CISH_DEPS_FILE := .make.c_deps
+toc2.c.BINS.MKDEP = gcc -E -MM $(CPPFLAGS) $(INCLUDES)
+package.clean_files += $(toc2.c.CISH_DEPS_FILE)
+$(toc2.c.CISH_DEPS_FILE): $(PACKAGE.MAKEFILE) $(toc2.c.MAKEFILE) $(toc2.c.CISH_SOURCES)
+	@touch $@; test x = "x$(toc2.c.CISH_SOURCES)" && exit 0; \
+	$(toc2.c.BINS.MKDEP) $(toc2.c.CISH_SOURCES) 2>/dev/null > $@
+# normally we also want:
+#  || $(toc2.c.BINS.RM) -f $@ 2>/dev/null
+# because we don't want a bad generated makefile to kill the build, but gcc -E
+# is returning 1 when some generated files do not yet exist.
+deps: $(toc2.c.CISH_DEPS_FILE)
+
+ifneq (,$(strip $(filter distclean clean,$(MAKECMDGOALS))))
+# $(warning Skipping C/C++ deps generation.)
+# ABSOLUTEBOGO := $(shell $(toc2.c.BINS.RM) -f $(toc2.c.CISH_DEPS_FILE))
+else
+#$(warning Including C/C++ deps.)
+-include $(toc2.c.CISH_DEPS_FILE)
+endif
+
+endif
+# ^^^^ ifneq(,$(toc2.c.CISH_SOURCES))
+endif
+# ^^^^ end $(toc2.c.USE_MKDEPS)
+########################################################################
