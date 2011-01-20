@@ -61,23 +61,7 @@ void Global::setupGame(){
     scripting->init();
     scripting->run("game/main.js");
     ObjectFrame *p = new ObjectFrame(15.0f, 15.0f, 50.0f, 50.0f, 0.0f);
-    /*Entity *a = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 0.0f, "bullet.png");
-    Entity *b = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 45.0f, "bullet.png");
-    Entity *c = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 90.0f, "bullet.png");
-    Entity *d = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 135.0f, "bullet.png");
-    Entity *e = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 180.0f, "bullet.png");
-    Entity *f = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 225.0f, "bullet.png");
-    Entity *g = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 270.0f, "bullet.png");
-    Entity *h = new Entity(300.0f, 200.0f, 100.0f, 100.0f, 315.0f, "bullet.png");*/
     objectManager->addObject(p);
-    /*objectManager->addObject(a);
-    objectManager->addObject(b);
-    objectManager->addObject(c);
-    objectManager->addObject(d);
-    objectManager->addObject(e);
-    objectManager->addObject(f); 
-    objectManager->addObject(g);
-    objectManager->addObject(h); */
 }
 
 void Global::quitGame(){
