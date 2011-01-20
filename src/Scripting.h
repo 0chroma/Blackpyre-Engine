@@ -26,12 +26,12 @@ class Scripting {
         static v8::Handle<v8::Value> func_quit(const v8::Arguments& args);
         static v8::Handle<v8::Value> func_print(const v8::Arguments& args);
 
-        static v8::Handle<v8::Value> func_createEntity(const v8::Arguments& args); 
     private:
         static Scripting *instance;
         
         static v8::Handle<v8::Context> context;
         
+        static void setupTimeFunctions(v8::Handle<v8::Object> dest);
         static v8::Handle<v8::Object> setupEntityClass(v8::Handle<v8::Object> dest);
         
         static v8::Handle<v8::ObjectTemplate> getObjectTemplate();

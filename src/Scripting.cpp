@@ -16,6 +16,7 @@
 
 #include <v8.h>
 #include <v8/juice/ClassWrap.h>
+#include <v8/juice/time.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
@@ -36,7 +37,12 @@ Scripting::~Scripting(){
 
 void Scripting::init(){
     fprintf(stderr, "Initiating scripting environment...\n");
+    v8::Locker threadlockerkludge; // See http://code.google.com/p/v8/issues/detail?id=471
     v8::HandleScope handle_scope;
+    
+    //for time.h
+    v8::Locker tlocker;
+
     // Get the template for the global object.
     v8::Handle<v8::ObjectTemplate> global = getObjectTemplate();
     
@@ -44,20 +50,22 @@ void Scripting::init(){
     // functions
     context = v8::Context::New(NULL, global);
 
-
     // Enter the newly created execution environment.
     v8::Context::Scope context_scope(context);
 
-
-    Scripting::setupEntityClass(context->Global());
+    setupTimeFunctions(context->Global());
+    setupEntityClass(context->Global());
+    
     fprintf(stderr, "Scripting environment initialized!\n");
 }
 
 void Scripting::run(const char* script){
+    v8::Locker tlock;
     v8::HandleScope handle_scope;
     v8::Context::Scope context_scope(context);
     v8::Handle<v8::String> file_name = v8::String::New(script);
     v8::Handle<v8::String> source = ReadFile(script);
+
     if (source.IsEmpty()) {
         fprintf(stderr, "Error reading '%s'\n", script);
         return;
@@ -77,6 +85,7 @@ Scripting *Scripting::getInstance(){
 
 v8::Handle<v8::ObjectTemplate> Scripting::getObjectTemplate(){
     v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New();
+
     // Bind the global 'load' function to the C++ Load callback.
     global->Set(v8::String::New("load"), v8::FunctionTemplate::New(func_load));
     // Bind the 'quit' function
@@ -87,6 +96,33 @@ v8::Handle<v8::ObjectTemplate> Scripting::getObjectTemplate(){
     
 
     return global;
+}
+
+// ======== Setup v8 juice's bindable functions ========
+
+void Scripting::setupTimeFunctions(v8::Handle<v8::Object> dest){ 
+    dest->Set(v8::String::New("setTimeout"),
+                  v8::FunctionTemplate::New( v8::juice::setTimeout )->GetFunction() );
+    dest->Set(v8::String::New("clearTimeout"),
+                  v8::FunctionTemplate::New( v8::juice::clearTimeout )->GetFunction() );
+    dest->Set(v8::String::New("setInterval"),
+                  v8::FunctionTemplate::New( v8::juice::setInterval )->GetFunction() );
+    dest->Set(v8::String::New("clearInterval"),
+                  v8::FunctionTemplate::New( v8::juice::clearInterval )->GetFunction() );
+    dest->Set(v8::String::New("spawnTimeoutThread"),
+                  v8::FunctionTemplate::New( v8::juice::spawnTimeoutThread )->GetFunction() );
+    dest->Set(v8::String::New("clearTimeoutThread"),
+                  v8::FunctionTemplate::New( v8::juice::clearTimeoutThread )->GetFunction() );
+    dest->Set(v8::String::New("spawnIntervalThread"),
+                  v8::FunctionTemplate::New( v8::juice::spawnIntervalThread )->GetFunction() );
+    dest->Set(v8::String::New("clearIntervalThread"),
+                  v8::FunctionTemplate::New( v8::juice::clearIntervalThread )->GetFunction() );
+    dest->Set(v8::String::New("sleep"),
+                  v8::FunctionTemplate::New( v8::juice::sleep )->GetFunction() );
+    dest->Set(v8::String::New("mssleep"),
+                  v8::FunctionTemplate::New( v8::juice::mssleep )->GetFunction() );
+    dest->Set(v8::String::New("usleep"),
+                  v8::FunctionTemplate::New( v8::juice::usleep )->GetFunction() );
 }
 
 // ======== Object Template Constructors for Entity and friends ========
@@ -152,20 +188,6 @@ JUICE_CLASSWRAP_CLASSNAME(Entity,"Entity")
 
 
 // ======== Runtime ========
-/*
-v8::Handle<v8::Value> Scripting::func_createEntity(const v8::Arguments& args) {
-    if (args.Length() < 1) return v8::Undefined();
-    v8::HandleScope handle_scope;
-    v8::Handle<v8::Value> arg = args[0];
-    v8::String::Utf8Value value(arg);
-    float angle = atoi(ToCString(value));
-
-    ObjectManager *objectManager = Global::getInstance()->objectManager;
-    Entity *a = new Entity(300.0f, 200.0f, 100.0f, 100.0f, angle, "bullet.png"); 
-    objectManager->addObject(a);
-
-    return getEntityObjectTemplate(a);
-}*/
 
 v8::Handle<v8::Value> Scripting::func_load(const v8::Arguments& args) {
     for(int i = 0; i < args.Length(); i++){
