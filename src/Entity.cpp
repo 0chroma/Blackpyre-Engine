@@ -27,14 +27,21 @@
 
 Entity::Entity(float x, float y, float sx, float sy, float a, std::string sp)
     : GameObject(x,y,sx,sy,a){
+        fprintf(stdout, "Creating an entity at %f, %f...", x, y);
     objectmanagerId = 0;
     sprite = sp;
     ResourceManager *resourceManager = Global::getInstance()->resourceManager;
     texture = resourceManager->loadTexture(sprite.c_str());
+    //Now we need to add ourselves to the object manager
+    ObjectManager *objectManager = Global::getInstance()->objectManager;
+    objectmanagerId = objectManager->addObject(this);
+
 }
 
 Entity::~Entity(){
-
+    //remove ourselves from the object manager
+    ObjectManager *objectManager = Global::getInstance()->objectManager;
+    objectManager->removeObject(objectmanagerId);
 }
 
 void Entity::render(){
