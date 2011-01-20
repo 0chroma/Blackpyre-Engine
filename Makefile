@@ -42,12 +42,14 @@ $(JUICE_DIRS): FORCE
 
 finish: 
 	@echo ""
-	@mv -vf ./src/blackpyre ./bin 
-	@chmod +x ./bin/blackpyre
+	@mv -vf ./src/blackpyre .
+	@mv -vf ./support/v8-juice/src/lib/juice/libv8-juice.so ./lib
+	@mv -vf ./support/v8/libv8.so ./lib
+	@chmod +x ./blackpyre
 	@echo ""
-	-ls --color ./bin/*
+	-ls --color ./blackpyre ./lib
 	@echo ""
-	@echo "Now cd to ./bin and run blackpyre!"
+	@echo "Now run blackpyre!"
 	@echo ""
 
 clean:
