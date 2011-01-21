@@ -32,7 +32,6 @@ class Entity : public GameObject{
 
         void show();
         void hide();
-
     private:
         int objectmanagerId;
 };
