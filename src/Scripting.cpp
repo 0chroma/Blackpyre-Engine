@@ -22,7 +22,15 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string>
+
+// Some magic so we can get JS objects from our native objects
+ #define CLASSWRAP_BOUND_TYPE Entity
+ #define CLASSWRAP_BOUND_TYPE_NAME "Entity"
+ // OPTIONAL: #define CLASSWRAP_BOUND_TYPE_INHERITS BoundBaseClass
+// ^^^^^ required if MyType sublcasses another bound native!
+#include <v8/juice/ClassWrap_TwoWay.h>
 
 Scripting *Scripting::instance = 0;
 v8::Handle<v8::Context> Scripting::context;
@@ -98,6 +106,20 @@ v8::Handle<v8::ObjectTemplate> Scripting::getObjectTemplate(){
     return global;
 }
 
+void Scripting::callUpdateFunction(Entity* obj){
+    v8::Locker tlock;
+    v8::HandleScope handle_scope;
+    namespace cv = ::v8::juice::convert;
+
+    v8::Handle<v8::Object> jsObj = v8::Handle<v8::Object>::Cast(cv::CastToJS(obj));
+
+    v8::Local<v8::Value>  func = jsObj->Get(v8::String::New("onUpdate"));
+    if (func->IsFunction()){ //&& !func->isEmpty()){
+        v8::Local<v8::Function> f = v8::Local<v8::Function>::Cast(func);
+        f->Call(jsObj, 0, 0); 
+    }
+}
+
 // ======== Setup v8 juice's bindable functions ========
 
 void Scripting::setupTimeFunctions(v8::Handle<v8::Object> dest){ 
@@ -134,11 +156,25 @@ v8::Handle<v8::Object> Scripting::setupEntityClass(v8::Handle<v8::Object> dest){
 
     typedef cw::ClassWrap<Entity> CW;
     CW & cw( CW::Instance() );
-    
+   
+    cw.BindMemVar<float, &Entity::posX>( "posX" );
+    cw.BindMemVar<float, &Entity::posY>( "posY" );
+    cw.BindMemVar<float, &Entity::angle>( "angle" );
+    cw.BindMemVar<float, &Entity::initialPosX>( "initialPosX" );
+    cw.BindMemVar<float, &Entity::initialPosY>( "initialPosY" );
+    cw.BindMemVar<float, &Entity::initialAngle>( "initialAngle" );
+
+
+    typedef convert::MemFuncInvocationCallbackCreator<Entity>
+            ICM; // typing-saver
+    cw.Set( "show", ICM::M0::Invocable<void,&Entity::show> );
+    cw.Set( "hide", ICM::M0::Invocable<void,&Entity::hide> );
+    cw.Set( "timeSinceSpawn", ICM::M0::Invocable<uint32_t,&Entity::timeSinceSpawn> );
 
     cw.Set( "destroy", CW::DestroyObject );
+    
     cw.Seal(); // ends the binding process
-    cw.AddClassTo( dest ); // installs BoundNative class in dest
+    cw.AddClassTo( dest );
     return cw.CtorTemplate()->GetFunction();
 }
 
@@ -169,6 +205,7 @@ namespace v8 { namespace juice { namespace convert {
         // Optional:
         static const NativeToJS<float> FloatToJS = NativeToJS<float>();
         static const JSToNative<float> JSToFloat = JSToNative<float>();
+
 }}}
 
 namespace v8 { namespace juice { namespace cw {
@@ -184,7 +221,7 @@ namespace v8 { namespace juice { namespace cw {
 }}}
 
 //define JS-side name for classes
-JUICE_CLASSWRAP_CLASSNAME(Entity,"Entity")
+//JUICE_CLASSWRAP_CLASSNAME(Entity,"Entity")
 
 
 // ======== Runtime ========
