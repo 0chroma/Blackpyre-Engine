@@ -106,7 +106,7 @@ v8::Handle<v8::ObjectTemplate> Scripting::getObjectTemplate(){
     return global;
 }
 
-void Scripting::callUpdateFunction(Entity* obj){
+void Scripting::callUpdateFunction(Entity* obj){ //TODO: eventually I might want to use templates or something to make sure this can be done for both Entity and ObjectFrame
     v8::Locker tlock;
     v8::HandleScope handle_scope;
     namespace cv = ::v8::juice::convert;
