@@ -10,6 +10,8 @@
 #include "ObjectManager.h"
 #include "GameObject.h"
 
+#include <stdio.h>
+
 GameObject *ObjectManager::rootObject = 0;
 ObjectManager *ObjectManager::instance = 0;
 int ObjectManager::idCounter = 0;
@@ -40,9 +42,10 @@ int ObjectManager::addObject(GameObject *object){
         }
         listObj->next = object;
         object->prev = listObj;
+        object->next = 0; //set a default incase it was added already
     }
     object->id = ++idCounter;
-    object->setSpawnTime();
+    object->setSpawnTime(); //TODO: maybe move this somewhere else since it would screw up some animations if the object was removed then added again
     return (int) object->id;
 }
 

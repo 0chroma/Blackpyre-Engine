@@ -42,9 +42,9 @@ $(JUICE_DIRS): FORCE
 
 finish: 
 	@echo ""
-	@mv -vf ./src/blackpyre .
-	@mv -vf ./support/v8-juice/src/lib/juice/libv8-juice.so ./lib
-	@mv -vf ./support/v8/libv8.so ./lib
+	@cp -vf ./src/blackpyre .
+	@cp -vf ./support/v8-juice/src/lib/juice/libv8-juice.so ./lib
+	@cp -vf ./support/v8/libv8.so ./lib
 	@chmod +x ./blackpyre
 	@echo ""
 	-ls --color ./blackpyre ./lib

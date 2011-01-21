@@ -12,6 +12,7 @@
 #define Scripting_h
 
 class Entity;
+class GameObject;
 
 class Scripting {
     public:
@@ -25,6 +26,8 @@ class Scripting {
 
         static v8::Handle<v8::Value> func_quit(const v8::Arguments& args);
         static v8::Handle<v8::Value> func_print(const v8::Arguments& args);
+        
+        static void callUpdateFunction(Entity* obj);
 
     private:
         static Scripting *instance;

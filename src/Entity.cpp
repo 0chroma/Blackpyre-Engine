@@ -11,6 +11,7 @@
 #include "GlUtil.h"
 #include "ResourceManager.h"
 #include "ObjectManager.h"
+#include "Scripting.h"
 
 #ifdef __APPLE__
 #include <OpenGL/OpenGL.h>
@@ -71,7 +72,8 @@ void Entity::render(){
 }
 
 void Entity::update(){
-    //uint32_t time = fabs(sin((timeSinceSpawn()/22.22)*(3.14/180)))*4000;
+    Scripting::callUpdateFunction(this);
+    /*//uint32_t time = fabs(sin((timeSinceSpawn()/22.22)*(3.14/180)))*4000;
     uint32_t time = timeSinceSpawn()*2;
     while(time > 6000){
         time -= 6000;
@@ -80,7 +82,7 @@ void Entity::update(){
 //    posX = initialPosX+(time*sin(initialAngle*(3.14/180))/15);
 //    posY = initialPosY+(time*cos(initialAngle*(3.14/180))/15);
     posX = initialPosX + (time*sin((initialAngle+(time/10))*(3.14/180))/17);
-    posY = initialPosY + (time*cos((initialAngle+(time/10))*(3.14/180))/17);
+    posY = initialPosY + (time*cos((initialAngle+(time/10))*(3.14/180))/17);*/
 }
 
 void Entity::show(){
