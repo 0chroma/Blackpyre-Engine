@@ -11,6 +11,7 @@
 #include "Scripting.h"
 #include "Global.h"
 #include "ObjectManager.h"
+#include "GameObject.h"
 #include "Entity.h"
 #include "util.h"
 
@@ -26,10 +27,15 @@
 #include <string>
 
 // Some magic so we can get JS objects from our native objects
- #define CLASSWRAP_BOUND_TYPE Entity
- #define CLASSWRAP_BOUND_TYPE_NAME "Entity"
- // OPTIONAL: #define CLASSWRAP_BOUND_TYPE_INHERITS BoundBaseClass
+#define CLASSWRAP_BOUND_TYPE GameObject
+#define CLASSWRAP_BOUND_TYPE_NAME "GameObject"
+// OPTIONAL: #define CLASSWRAP_BOUND_TYPE_INHERITS BoundBaseClass
 // ^^^^^ required if MyType sublcasses another bound native!
+#include <v8/juice/ClassWrap_TwoWay.h>
+
+#define CLASSWRAP_BOUND_TYPE Entity
+#define CLASSWRAP_BOUND_TYPE_NAME "Entity"
+#define CLASSWRAP_BOUND_TYPE_INHERITS GameObject
 #include <v8/juice/ClassWrap_TwoWay.h>
 
 Scripting *Scripting::instance = 0;
@@ -62,7 +68,7 @@ void Scripting::init(){
     v8::Context::Scope context_scope(context);
 
     setupTimeFunctions(context->Global());
-    setupEntityClass(context->Global());
+    setupClasses(context->Global());
     
     fprintf(stderr, "Scripting environment initialized!\n");
 }
@@ -147,35 +153,47 @@ void Scripting::setupTimeFunctions(v8::Handle<v8::Object> dest){
                   v8::FunctionTemplate::New( v8::juice::usleep )->GetFunction() );
 }
 
-// ======== Object Template Constructors for Entity and friends ========
+// ======== Object Template Constructors for GameObject and friends ========
 
-v8::Handle<v8::Object> Scripting::setupEntityClass(v8::Handle<v8::Object> dest){
+void Scripting::setupClasses(v8::Handle<v8::Object> dest){
     using namespace v8;
     using namespace v8::juice;
     HandleScope scope;
 
-    typedef cw::ClassWrap<Entity> CW;
-    CW & cw( CW::Instance() );
+    // ======== GameObject ========
+    typedef cw::ClassWrap<GameObject> CW;
+    CW & gocw( CW::Instance() );
    
-    cw.BindMemVar<float, &Entity::posX>( "posX" );
-    cw.BindMemVar<float, &Entity::posY>( "posY" );
-    cw.BindMemVar<float, &Entity::angle>( "angle" );
-    cw.BindMemVar<float, &Entity::initialPosX>( "initialPosX" );
-    cw.BindMemVar<float, &Entity::initialPosY>( "initialPosY" );
-    cw.BindMemVar<float, &Entity::initialAngle>( "initialAngle" );
+    gocw.BindMemVar<float, &GameObject::posX>( "posX" );
+    gocw.BindMemVar<float, &GameObject::posY>( "posY" );
+    gocw.BindMemVar<float, &GameObject::angle>( "angle" );
+    gocw.BindMemVar<float, &GameObject::initialPosX>( "initialPosX" );
+    gocw.BindMemVar<float, &GameObject::initialPosY>( "initialPosY" );
+    gocw.BindMemVar<float, &GameObject::initialAngle>( "initialAngle" );
 
+    typedef convert::MemFuncInvocationCallbackCreator<GameObject>
+            ICM; // typing-saver
+    gocw.Set( "timeSinceSpawn", ICM::M0::Invocable<uint32_t,&GameObject::timeSinceSpawn> );
+    gocw.Set( "destroy", CW::DestroyObject );
+    
+    gocw.Seal(); // ends the binding process
+    gocw.AddClassTo( dest );
+
+    // ======== Entity ========
+    typedef cw::ClassWrap<Entity> ENCW;
+    ENCW & encw( ENCW::Instance() );
+   
+    encw.InheritNative(gocw);
 
     typedef convert::MemFuncInvocationCallbackCreator<Entity>
-            ICM; // typing-saver
-    cw.Set( "show", ICM::M0::Invocable<void,&Entity::show> );
-    cw.Set( "hide", ICM::M0::Invocable<void,&Entity::hide> );
-    cw.Set( "timeSinceSpawn", ICM::M0::Invocable<uint32_t,&Entity::timeSinceSpawn> );
+            EICM; // typing-saver
+    encw.Set( "show", EICM::M0::Invocable<void,&Entity::show> );
+    encw.Set( "hide", EICM::M0::Invocable<void,&Entity::hide> );
 
-    cw.Set( "destroy", CW::DestroyObject );
+    encw.Set( "destroy", ENCW::DestroyObject );
     
-    cw.Seal(); // ends the binding process
-    cw.AddClassTo( dest );
-    return cw.CtorTemplate()->GetFunction();
+    encw.Seal(); // ends the binding process
+    encw.AddClassTo( dest );
 }
 
 // ======== Policy Classes for v8::Juice ========
@@ -210,6 +228,14 @@ namespace v8 { namespace juice { namespace convert {
 
 namespace v8 { namespace juice { namespace cw {
     // constructor binding
+    template <>
+    struct Factory<GameObject>
+        : Factory_CtorForwarder<GameObject,
+            tmp::TypeList<
+                convert::CtorForwarder5<GameObject,float,float,float,float,float>
+            >
+        >
+    {};
     template <>
     struct Factory<Entity>
         : Factory_CtorForwarder<Entity,
