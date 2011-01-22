@@ -40,7 +40,7 @@ void GlUtil::initRendering(){
 }
 
 void GlUtil::handleResize(int w, int h){
-    fprintf(stderr, "width is %u, height is %u\n", w, h);
+    fprintf(stderr, "GlUtil: Window width is %u, height is %u\n", w, h);
 
     glViewport(0, 0, w, h);
 
@@ -82,10 +82,10 @@ GLuint GlUtil::loadTexture(const char *filename){
     textureId = pngBind(dataPath(filename), PNG_NOMIPMAPS, PNG_ALPHA, &tmpInfo, GL_CLAMP, GL_NEAREST, GL_NEAREST);
     
     if (textureId != 0) {
-           fprintf(stderr, "Loaded %s successfully with textureId of %i\n", dataPath(filename), textureId);
+           fprintf(stderr, "GlUtil: Loaded %s successfully with textureId of %i\n", dataPath(filename), textureId);
     }
     else {
-           fprintf(stderr, "Can't load %s\n", dataPath(filename));
+           fprintf(stderr, "GlUtil: Can't load %s\n", dataPath(filename));
     }
     glDisable(GL_TEXTURE_2D);
     return textureId;

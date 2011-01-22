@@ -50,7 +50,7 @@ Scripting::~Scripting(){
 }
 
 void Scripting::init(){
-    fprintf(stderr, "Initiating scripting environment...\n");
+    fprintf(stderr, "Scripting: Initiating scripting environment...\n");
     v8::Locker threadlockerkludge; // See http://code.google.com/p/v8/issues/detail?id=471
     v8::HandleScope handle_scope;
     
@@ -70,7 +70,7 @@ void Scripting::init(){
     setupTimeFunctions(context->Global());
     setupClasses(context->Global());
     
-    fprintf(stderr, "Scripting environment initialized!\n");
+    fprintf(stderr, "Scripting: Environment initialized!\n");
 }
 
 void Scripting::run(const char* script){
@@ -81,11 +81,11 @@ void Scripting::run(const char* script){
     v8::Handle<v8::String> source = ReadFile(script);
 
     if (source.IsEmpty()) {
-        fprintf(stderr, "Error reading '%s'\n", script);
+        fprintf(stderr, "Scripting: Error reading '%s'\n", script);
         return;
     }
     if (!ExecuteString(source, file_name, false, true)){
-        fprintf(stderr, "Problem executing '%s'\n", script);
+        fprintf(stderr, "Scripting: Problem executing '%s'\n", script);
         return;
     }
 }
