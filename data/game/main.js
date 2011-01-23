@@ -1,4 +1,4 @@
-var f = new Entity(640/2, 480/2, 100, 100, 0, "bullet.png");
+var f = new Entity(640/2, 480/2, 100, 100, 0, "testTexture.png");
 
 var center = { x: 640/2, y: 480/2 }; //Blackpyre defines the screen to be 640x480, but it scales any sprites you specify if the screen is of higher resolution.
 var size = { x: 640, y: 480 };
