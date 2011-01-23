@@ -115,6 +115,7 @@ v8::Handle<v8::ObjectTemplate> Scripting::getObjectTemplate(){
 void Scripting::callUpdateFunction(Entity* obj){ //TODO: eventually I might want to use templates or something to make sure this can be done for both Entity and ObjectFrame
     v8::Locker tlock;
     v8::HandleScope handle_scope;
+    v8::TryCatch try_catch;
     namespace cv = ::v8::juice::convert;
 
     v8::Handle<v8::Object> jsObj = v8::Handle<v8::Object>::Cast(cv::CastToJS(obj));
@@ -122,7 +123,11 @@ void Scripting::callUpdateFunction(Entity* obj){ //TODO: eventually I might want
     v8::Local<v8::Value>  func = jsObj->Get(v8::String::New("onUpdate"));
     if (func->IsFunction()){ //&& !func->isEmpty()){
         v8::Local<v8::Function> f = v8::Local<v8::Function>::Cast(func);
-        f->Call(jsObj, 0, 0); 
+        v8::Handle<v8::Value> result = f->Call(jsObj, 0, 0);
+        if(result.IsEmpty()) {
+            fprintf(stderr, "Scripting: Problem when calling an entity's update function!\n");
+            ReportException(&try_catch);
+        }
     }
 }
 
@@ -263,7 +268,7 @@ v8::Handle<v8::Value> Scripting::func_load(const v8::Arguments& args) {
         if(source.IsEmpty()){
             return v8::ThrowException(v8::String::New("Error loading file"));
         }
-        if(!ExecuteString(source, v8::String::New(*file), false, false)){
+        if(!ExecuteString(source, v8::String::New(*file), false, true)){
             return v8::ThrowException(v8::String::New("Error executing file"));
         }
     }
