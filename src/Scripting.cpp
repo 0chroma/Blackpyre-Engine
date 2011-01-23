@@ -15,7 +15,7 @@
 #include "Entity.h"
 #include "util.h"
 
-#include <v8.h>
+#include <v8-debug.h>
 #include <v8/juice/ClassWrap.h>
 #include <v8/juice/time.h>
 #include <stdio.h>

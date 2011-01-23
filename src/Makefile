@@ -13,9 +13,9 @@ LIBRARY_PATHS = -L../support/v8 \
                 -L../support/v8-juice/src/lib/juice/
 
 ifeq ($(shell uname),Darwin)
-	LIBS = -framework OpenGL -framework GLUT -framework GLU -framework pthread -framework v8
+	LIBS = -framework OpenGL -framework GLUT -framework GLU -framework pthread -framework v8_g
 else
-    LIBS = -lglut -lGLU -lpthread -lv8 -lv8-juice
+    LIBS = -lglut -lGLU -lpthread -lv8_g -lv8-juice
 endif
 
 all: $(PROG)
