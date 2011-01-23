@@ -41,15 +41,15 @@ ResourceManager *ResourceManager::getInstance(){
 }
 
 GLuint ResourceManager::loadTexture(const char *filename){
-    ResourceManagerTextureObject *object = new ResourceManagerTextureObject();
     //check if we already loaded it
     ResourceManagerTextureObject *listObj = rootTextureObject;
     while(listObj){
-        if(!strcmp(listObj->path, dataPath(filename))){
+        if(strcmp(listObj->path, dataPath(filename)) == 0){
             return listObj->textureId;
         }
         listObj = listObj->next;
     }
+    ResourceManagerTextureObject *object = new ResourceManagerTextureObject();
     //add to linked list
     if(!rootTextureObject){
         rootTextureObject = object;
@@ -60,13 +60,14 @@ GLuint ResourceManager::loadTexture(const char *filename){
         }
         listObj->next = object;
         object->prev = listObj;
+        object->next = 0;
     }
     //setup
     GlUtil *glUtil = Global::getInstance()->glUtil;
     object->id = ++idCounter;
     strcpy(object->path, dataPath(filename));
     object->textureId = glUtil->loadTexture(filename);
-    return (int) object->id;
+    return object->textureId;
 }
 
 void ResourceManager::unloadTexture(GLuint id){

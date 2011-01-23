@@ -29,13 +29,14 @@
 Entity::Entity(float x, float y, float sx, float sy, float a, std::string sp)
     : GameObject(x,y,sx,sy,a){
     objectmanagerId = 0;
+    texture = 0;
     sprite = sp;
-    ResourceManager *resourceManager = Global::getInstance()->resourceManager;
-    texture = resourceManager->loadTexture(sprite.c_str());
+    //ResourceManager *resourceManager = Global::getInstance()->resourceManager;
+    //texture = resourceManager->loadTexture(sprite.c_str());
     //Now we need to add ourselves to the object manager
+
     ObjectManager *objectManager = Global::getInstance()->objectManager;
     objectmanagerId = objectManager->addObject(this);
-
 }
 
 Entity::~Entity(){
@@ -45,6 +46,7 @@ Entity::~Entity(){
 }
 
 void Entity::render(){
+    //fprintf(stderr, "sprite is %s, textureid is %i\n", sprite.c_str(), texture);
     update();
     glPushMatrix();
 	glTranslatef(posX+(sizeX/2), posY+(sizeY/2), 0.0f);
@@ -73,6 +75,14 @@ void Entity::render(){
 
 void Entity::update(){
     Scripting::callUpdateFunction(this);
+    if(texture == 0){
+        ResourceManager *resourceManager = Global::getInstance()->resourceManager;
+        texture = resourceManager->loadTexture(sprite.c_str());
+    }
+    //if(timeSinceSpawn() > 5000){
+    //    ResourceManager *resourceManager = Global::getInstance()->resourceManager;
+    //    resourceManager->loadTexture("testTexture.png");
+    //}
     /*//uint32_t time = fabs(sin((timeSinceSpawn()/22.22)*(3.14/180)))*4000;
     uint32_t time = timeSinceSpawn()*2;
     while(time > 6000){
