@@ -35,7 +35,7 @@ $(SUPPORT_DIRS): FORCE
 	cd $@; $(MAKE)
 
 $(V8_DIRS): FORCE
-	cd $@;  scons mode=release library=shared snapshot=off $(V8_EXTRA_ARGS); echo libv8.so|cpio -pd ./lib/
+	cd $@;  scons mode=debug library=shared snapshot=off $(V8_EXTRA_ARGS); echo libv8_g.so|cpio -pd ./lib/
 
 $(JUICE_DIRS): FORCE
 	cd $@; ./configure --disable-plugins --v8-prefix=`pwd`/../v8; $(MAKE)
@@ -44,7 +44,7 @@ finish:
 	@echo ""
 	@cp -vf ./src/blackpyre .
 	@cp -vf ./support/v8-juice/src/lib/juice/libv8-juice.so ./lib
-	@cp -vf ./support/v8/libv8.so ./lib
+	@cp -vf ./support/v8/libv8*.so ./lib
 	@chmod +x ./blackpyre
 	@echo ""
 	-ls --color ./blackpyre ./lib

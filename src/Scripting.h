@@ -6,7 +6,7 @@
  * See LICENSE for licensing information
  */
 
-#include <v8.h>
+#include <v8-debug.h>
 #include <v8/juice/ClassWrap.h>
 
 #ifndef Scripting_h

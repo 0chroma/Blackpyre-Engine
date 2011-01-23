@@ -46,7 +46,6 @@ Entity::~Entity(){
 }
 
 void Entity::render(){
-    //fprintf(stderr, "sprite is %s, textureid is %i\n", sprite.c_str(), texture);
     update();
     glPushMatrix();
 	glTranslatef(posX+(sizeX/2), posY+(sizeY/2), 0.0f);
@@ -74,11 +73,11 @@ void Entity::render(){
 }
 
 void Entity::update(){
-    Scripting::callUpdateFunction(this);
     if(texture == 0){
         ResourceManager *resourceManager = Global::getInstance()->resourceManager;
         texture = resourceManager->loadTexture(sprite.c_str());
     }
+    Scripting::callUpdateFunction(this);
     //if(timeSinceSpawn() > 5000){
     //    ResourceManager *resourceManager = Global::getInstance()->resourceManager;
     //    resourceManager->loadTexture("testTexture.png");
