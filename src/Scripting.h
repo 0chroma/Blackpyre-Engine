@@ -29,6 +29,13 @@ class Scripting {
         static v8::Handle<v8::Value> func_print(const v8::Arguments& args);
         
         static void callUpdateFunction(Entity* obj);
+
+        static const int KEY_DOWN = 1;
+        static const int KEY_UP = 2;
+        static const int MODE_KEY = 1;
+        static const int MODE_CHAR = 2;
+
+        static void callKeypressEvent(char key, int state, int mode);
         
     private:
         static Scripting *instance;

@@ -12,6 +12,7 @@
 #include "WindowFramework.h"
 #include "GlUtil.h"
 #include "Global.h"
+#include "Scripting.h"
 
 #ifdef __APPLE__
 #include <GLUT/glut.h>
@@ -25,8 +26,15 @@ int WindowGLUT::now_time = 0;
 int WindowGLUT::fps = 0;
 int WindowGLUT::frame = 0;
 
+bool WindowGLUT::charStates[256] = {};
+bool WindowGLUT::keyStates[256] = {};
+
 WindowGLUT::WindowGLUT(int argc, char **argv) : WindowFramework(argc, argv){
 	glutInit(&argc, argv);
+    for(int i=0;i<256;i++){
+        charStates[i]=false;
+        keyStates[i]=false;
+    }
 }
 
 WindowGLUT::~WindowGLUT(){
@@ -38,6 +46,7 @@ int WindowGLUT::create(char* title){
     
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
 	glutInitWindowSize(640, 480);
+    glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
 	
 	glutCreateWindow(title);
 	//fprintf(stderr, "%s\n", title);
@@ -46,8 +55,13 @@ int WindowGLUT::create(char* title){
     Global::getInstance()->setupGame();
 
     glutDisplayFunc(WindowGLUT::nullFunc);
-	glutKeyboardFunc(WindowGLUT::handleKeypress);
-	glutReshapeFunc(GlUtil::handleResize);
+    
+    glutKeyboardUpFunc(WindowGLUT::handleCharUp);
+	glutKeyboardFunc(WindowGLUT::handleCharDown);
+    glutSpecialUpFunc(WindowGLUT::handleKeyUp);
+	glutSpecialFunc(WindowGLUT::handleKeyDown);
+
+    glutReshapeFunc(GlUtil::handleResize);
     
     glutTimerFunc(100, WindowGLUT::drawGame, 0);
 
@@ -64,8 +78,32 @@ void WindowGLUT::drawGame(int){
     glutPostRedisplay();
 }
 
-void WindowGLUT::handleKeypress(unsigned char key, int x, int y){
-    //TODO
+void WindowGLUT::handleCharUp(unsigned char key, int x, int y){
+    charStates[key] = false;
+    Scripting *s = Scripting::getInstance();
+    s->callKeypressEvent(key, Scripting::KEY_UP, Scripting::MODE_CHAR);
+}
+
+void WindowGLUT::handleCharDown(unsigned char key, int x, int y){
+    if(charStates[key] == false){
+        charStates[key] = true;
+        Scripting *s = Scripting::getInstance();
+        s->callKeypressEvent(key, Scripting::KEY_DOWN, Scripting::MODE_CHAR);
+    }
+}
+
+void WindowGLUT::handleKeyUp(int key, int x, int y){
+    charStates[key] = false;
+    Scripting *s = Scripting::getInstance();
+    s->callKeypressEvent(key, Scripting::KEY_UP, Scripting::MODE_KEY);
+}
+
+void WindowGLUT::handleKeyDown(int key, int x, int y){
+    if(keyStates[key] == false){
+        keyStates[key] = true;
+        Scripting *s = Scripting::getInstance();
+        s->callKeypressEvent(key, Scripting::KEY_DOWN, Scripting::MODE_KEY);
+    }
 }
 
 void WindowGLUT::nullFunc(){
@@ -87,6 +125,6 @@ void WindowGLUT::nullFunc(){
 }
 
 uint32_t WindowGLUT::getTime(){
-    //my CS prof said that doing this would be ok, because I need to absctract with SDL which uses Uint32, so if it's wrong then it's not my fault
+    //my CS prof said that doing this should be ok, because I need to abstract with SDL which uses Uint32.
     return (uint32_t)glutGet(GLUT_ELAPSED_TIME);
 }

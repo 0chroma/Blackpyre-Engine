@@ -15,7 +15,7 @@ class WindowFramework {
     public:
         WindowFramework(int argc = 0, char **argv = 0);
         virtual ~WindowFramework();
-
+        
         virtual int create(char* title);
 
         static void handleKeypress(unsigned char key, int x, int y);
