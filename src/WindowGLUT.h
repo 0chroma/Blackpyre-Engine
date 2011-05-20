@@ -17,9 +17,15 @@ class WindowGLUT : public WindowFramework{
     public:
         WindowGLUT(int argc = 0, char **argv = 0);
         ~WindowGLUT();
-
+        
+        static bool charStates[256];
+        static bool keyStates[256];
+        
         int create(char* title);
-        static void handleKeypress(unsigned char key, int x, int y);
+        static void handleKeyUp(int key, int x, int y);
+        static void handleKeyDown(int key, int x, int y);
+        static void handleCharUp(unsigned char key, int x, int y);
+        static void handleCharDown(unsigned char key, int x, int y);
         static void nullFunc();
         static void drawGame(int);
         uint32_t getTime();

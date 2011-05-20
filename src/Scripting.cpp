@@ -131,6 +131,38 @@ void Scripting::callUpdateFunction(Entity* obj){ //TODO: eventually I might want
     }
 }
 
+//Scripting::KEY_DOWN = 1;
+//Scripting::KEY_UP = 2;
+//Scripting::MODE_KEY = 1;
+//Scripting::MODE_CHAR = 2;
+
+void Scripting::callKeypressEvent(char key, int state, int mode){
+    v8::Locker tlock;
+    v8::HandleScope handle_scope;
+    v8::Context::Scope context_scope(context);
+    v8::TryCatch try_catch;
+    
+    v8::Handle<v8::Object> global = context->Global();
+    
+    v8::Local<v8::Value>  func = global->Get(v8::String::New(state == KEY_DOWN ? "onKeyDown" : "onKeyUp"));
+    if (func->IsFunction()){ //&& !func->isEmpty()){
+        v8::Local<v8::Function> f = v8::Local<v8::Function>::Cast(func);
+        
+        v8::Handle<v8::Value> args[] = {v8::Number::New(0), v8::Number::New(0)};
+        
+        if(mode == MODE_KEY)
+            args[1] = v8::Number::New(key);
+        else
+            args[0] = v8::Number::New(key);
+        
+        v8::Handle<v8::Value> result = f->Call(context->Global(), 2, args);
+        if(result.IsEmpty()) {
+            fprintf(stderr, "Scripting: Problem when calling onKeyPress!\n");
+            ReportException(&try_catch);
+        }
+    }
+}
+
 // ======== Setup v8 juice's bindable functions ========
 
 void Scripting::setupTimeFunctions(v8::Handle<v8::Object> dest){ 
