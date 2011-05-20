@@ -3,7 +3,22 @@ var center = { x: (size.x-100)/2, y: (size.y-100)/2 }; // in this example all ou
 
 var boss = new Entity(center.x, center.y, 100, 100, 0, "testTexture.png");
 
-boss.onUpdate = function(){};
+var keyStates = {up: false, down: false, left: false, right: false};
+
+boss.onUpdate = function(){
+    if(keyStates.right){
+        this.posX += 2;
+    }
+    if(keyStates.left){
+        this.posX -= 2;
+    }
+    if(keyStates.up){
+        this.posY += 2;
+    }
+    if(keyStates.down){
+        this.posY -= 2;
+    }
+};
 
 function onKeyDown(char, key){
     print((char ? "char "+char : "key "+key) + " pressed!");
@@ -11,22 +26,33 @@ function onKeyDown(char, key){
         quit(); //quit on escape
     }
     if(key == 102){
-        boss.posX = boss.posX+1;
+        keyStates.right = true;
     }
     if(key == 100){
-        boss.posX = boss.posX-1;
+        keyStates.left = true;
     }
     if(key == 103){
-        boss.posY = boss.posY+1;
+        keyStates.up = true;
     }
     if(key == 101){
-        boss.posY = boss.posY-1;
+        keyStates.down = true;
     }
 }
 
 function onKeyUp(char, key){
     print((char ? "char "+char : "key "+key) + " released!");
-    print("x:"+boss.posX+" y:"+boss.posY);
+    if(key == 102){
+        keyStates.right = false;
+    }
+    if(key == 100){
+        keyStates.left = false;
+    }
+    if(key == 103){
+        keyStates.up = false;
+    }
+    if(key == 101){
+        keyStates.down = false;
+    }
 }
 
 function drawBullet(){

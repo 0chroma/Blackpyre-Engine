@@ -85,25 +85,21 @@ void WindowGLUT::handleCharUp(unsigned char key, int x, int y){
 }
 
 void WindowGLUT::handleCharDown(unsigned char key, int x, int y){
-    if(charStates[key] == false){
-        charStates[key] = true;
-        Scripting *s = Scripting::getInstance();
-        s->callKeypressEvent(key, Scripting::KEY_DOWN, Scripting::MODE_CHAR);
-    }
+    charStates[key] = true;
+    Scripting *s = Scripting::getInstance();
+    s->callKeypressEvent(key, Scripting::KEY_DOWN, Scripting::MODE_CHAR);
 }
 
 void WindowGLUT::handleKeyUp(int key, int x, int y){
-    charStates[key] = false;
+    keyStates[key] = false;
     Scripting *s = Scripting::getInstance();
     s->callKeypressEvent(key, Scripting::KEY_UP, Scripting::MODE_KEY);
 }
 
 void WindowGLUT::handleKeyDown(int key, int x, int y){
-    if(keyStates[key] == false){
-        keyStates[key] = true;
-        Scripting *s = Scripting::getInstance();
-        s->callKeypressEvent(key, Scripting::KEY_DOWN, Scripting::MODE_KEY);
-    }
+    keyStates[key] = true;
+    Scripting *s = Scripting::getInstance();
+    s->callKeypressEvent(key, Scripting::KEY_DOWN, Scripting::MODE_KEY);
 }
 
 void WindowGLUT::nullFunc(){
