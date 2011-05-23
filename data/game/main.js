@@ -3,19 +3,19 @@ var center = { x: (size.x-100)/2, y: (size.y-100)/2 }; // in this example all ou
 
 var boss = new Entity(center.x, center.y, 100, 100, 0, "testTexture.png");
 
-var keyStates = {up: false, down: false, left: false, right: false};
+var keyStates = {up: false, down: false, left: false, right: false, upDownFirst: "", leftRightFirst: ""};
 
 boss.onUpdate = function(){
-    if(keyStates.right){
+    if(keyStates.right && keyStates.leftRightFirst != "right"){
         this.posX += 2;
     }
-    if(keyStates.left){
+    if(keyStates.left && keyStates.leftRightFirst != "left"){
         this.posX -= 2;
     }
-    if(keyStates.up){
+    if(keyStates.up && keyStates.upDownFirst != "up"){
         this.posY += 2;
     }
-    if(keyStates.down){
+    if(keyStates.down && keyStates.upDownFirst != "down"){
         this.posY -= 2;
     }
 };
@@ -27,15 +27,23 @@ function onKeyDown(char, key){
     }
     if(key == 102){
         keyStates.right = true;
+        if(keyStates.left)
+            keyStates.leftRightFirst = "left";
     }
     if(key == 100){
         keyStates.left = true;
+        if(keyStates.right)
+            keyStates.leftRightFirst = "right";
     }
     if(key == 103){
         keyStates.up = true;
+        if(keyStates.down)
+            keyStates.upDownFirst = "down";
     }
     if(key == 101){
         keyStates.down = true;
+        if(keyStates.up)
+            keyStates.upDownFirst = "up";
     }
 }
 
@@ -53,6 +61,11 @@ function onKeyUp(char, key){
     if(key == 101){
         keyStates.down = false;
     }
+
+    if(key == 102 || key == 100)
+        keyStates.leftRightFirst = false;
+    if(key == 101 || key == 103)
+        keyStates.upDownFirst = false;
 }
 
 function drawBullet(){

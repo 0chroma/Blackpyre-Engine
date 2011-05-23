@@ -2,7 +2,7 @@ CC = g++
 CFLAGS = -Wall -g -Wl,-rpath,'./lib' #'${ORIGIN}/lib'
 PROG = blackpyre
 
-SRCS = main.h main.cpp Global.h Global.cpp WindowFramework.h WindowFramework.cpp WindowGLUT.h WindowGLUT.cpp GlUtil.h GlUtil.cpp ObjectManager.h ObjectManager.cpp GameObject.h GameObject.cpp ObjectFrame.h ObjectFrame.cpp Entity.h Entity.cpp util.h util.cpp ResourceManager.h ResourceManager.cpp Scripting.h Scripting.cpp
+SRCS = main.cpp Global.cpp WindowFramework.cpp WindowGLUT.cpp GlUtil.cpp ObjectManager.cpp GameObject.cpp ObjectFrame.cpp Entity.cpp util.cpp ResourceManager.cpp Scripting.cpp
 
 INCLUDES =  ../support/glpng/lib/libglpng.a \
             -I../support/v8/include/ \
